@@ -1,0 +1,3264 @@
+---
+title: "Brent Clayton"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: scroll
+    horizontal_layout: fill
+    theme:
+      version: 4
+      bootswatch: minty
+---
+
+
+```{css, echo=FALSE}
+<style>                     
+.navbar {
+  background-color:red;
+  border-color:black;
+}
+.navbar-brand {
+color:black!important;
+}
+</style>  
+
+```
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(readxl)
+library(lubridate)
+library(janitor)
+library(scales)
+library(gridExtra)
+library(data.table)
+library(DT)
+
+Sys.setlocale("LC_TIME", "English")
+```
+
+
+Financials
+================================================================================
+
+<center><b><font size="8"> Financials 2022 - 2023 </font></b></center> 
+
+
+```{r, fig.width=8, fig.height=8}
+total_2022 <- as.data.frame(cbind(
+  colnames(as.data.frame(read_excel("kpi.xlsx", sheet = "2022 Total", range = "B5:W5"))),
+  colnames(as.data.frame(read_excel("kpi.xlsx", sheet = "2022 Total", range = "B18:W18")))
+))
+
+total_2022 <- total_2022 %>% slice(-12,-14) %>% 
+               t() %>% 
+               row_to_names(row_number = 1) %>%  
+               clean_names() %>%
+               as.data.frame() %>%
+               mutate_all(as.numeric)
+
+
+# Extract Data
+total_2023 <- read_excel("kpi.xlsx", sheet = "2023 Total", range = "B6:W15")
+
+# Convert as data frame
+total_2023 <- as.data.frame(total_2023)
+
+# Remove columns 12 and 14
+total_2023 <- total_2023 %>% select(-12,-14)
+
+# Convert all NAs to Zero
+total_2023[is.na(total_2023)] <- 0 
+
+total_2023 <- rbind(colnames(total_2023),
+                    total_2023)
+
+# Assign same colnames as total 2022
+colnames(total_2023) <- colnames(total_2022)
+
+# Convert - char included to zero in order to make calculations
+total_2023$r_o_to_convo_percent <- gsub("\\-",0,total_2023$r_o_to_convo_percent)
+total_2023$convo_to_call_percent <- gsub("\\-",0,total_2023$convo_to_call_percent)
+total_2023$show_rate_percent <- gsub("\\-",0,total_2023$show_rate_percent)
+total_2023$close_rate_percent <- gsub("\\-",0,total_2023$close_rate_percent)
+
+# Convert columns to numeric
+total_2023 <- total_2023 %>%
+  mutate_all(as.numeric)
+
+# Set number format normal
+options(scipen = 999)   
+
+# Sum all the values of the columns and trasposte it
+total_2023 <- total_2023 %>% colSums() %>%
+  as.data.frame() %>%
+  t() 
+
+
+# Merge 2022 and 2023
+total <- rbind(total_2022,total_2023)
+
+# Add year columns
+
+total <- (cbind(c("2022","2023"),
+                total))
+rownames(total) <- NULL          
+colnames(total)[1] <- "year"
+
+
+
+```
+
+
+### 
+
+```{r, fig.width=12, fig.height=5}
+
+t_as <- ggplot(total, aes(x=year, y=ad_spend, fill=year)) +
+  geom_bar(stat="identity") +
+  geom_text(aes(label=paste("$",prettyNum(ad_spend, big.mark=",", scientific=FALSE))), vjust=1.5, color="white") +
+  scale_fill_manual(values=c("#8fa091","#8dc1aa")) +
+  labs(x = "", y="Ad Spend", fill="Year") +
+  scale_y_continuous(labels=scales::dollar_format(), limits = c(0,60000), breaks = seq(0,60000,10000)) +
+   theme(axis.title = element_text(size = 20))
+
+t_gm <- ggplot(total, aes(x=year, y=group_member, fill=year)) +
+  geom_bar(stat="identity") +
+  geom_text(aes(label=prettyNum(group_member, big.mark=",", 
+                                          scientific=FALSE)), vjust=1.5, color="white")+
+  scale_fill_manual(values=c("#8fa091","#8dc1aa")) +
+  labs(x = "", y="Group Members", fill="Year") +
+  scale_y_continuous(limits = c(0,1800)) +
+   theme(axis.title = element_text(size = 20))
+
+   grid.arrange(t_as,t_gm,nrow=1)
+
+```
+
+### 
+
+```{r, fig.width=12, fig.height=5}
+
+t_ro <- ggplot(total, aes(x=year, y=reach_outs, fill=year)) +
+  geom_bar(stat="identity") +
+  geom_text(aes(label=prettyNum(reach_outs, big.mark=",", 
+                                          scientific=FALSE)), vjust=1.5, color="white")+
+  scale_fill_manual(values=c("#8fa091","#8dc1aa")) +
+  labs(x = "", y="Reach Outs", fill="Year") +
+  scale_y_continuous(limits = c(0,5200)) +
+   theme(axis.title = element_text(size = 20))
+
+t_c <- ggplot(total, aes(x=year, y=conversations, fill=year)) +
+  geom_bar(stat="identity") +
+  geom_text(aes(label=prettyNum(conversations, big.mark=",", 
+                                scientific=FALSE)), vjust=1.5, color="white")+
+  scale_fill_manual(values=c("#8fa091","#8dc1aa")) +
+  labs(x = "", y="Conversations", fill="Year") +
+  scale_y_continuous(limits = c(0,3000), breaks = seq(0,3000,500)) +
+     theme(axis.title = element_text(size = 20))
+
+grid.arrange(t_ro, t_c, nrow=1)
+
+```
+
+### 
+
+```{r, fig.width=12, fig.height=5}
+
+t_fc <- ggplot(total, aes(x=year, y=fb_call_booked, fill=year)) +
+  geom_bar(stat="identity") +
+  geom_text(aes(label=prettyNum(fb_call_booked, big.mark=",", 
+                                scientific=FALSE)), vjust=1.5, color="white")+
+  scale_fill_manual(values=c("#8fa091","#8dc1aa")) +
+  labs(x = "", y="FB Calls Booked", fill="Year") +
+  scale_y_continuous(limits = c(0,320), breaks = seq(0,320,100)) +
+     theme(axis.title = element_text(size = 20))
+
+t_fa <- ggplot(total, aes(x=year, y=fb_ad_call_booked, fill=year)) +
+  geom_bar(stat="identity") +
+  geom_text(aes(label=prettyNum(fb_ad_call_booked, big.mark=",", 
+                                scientific=FALSE)), vjust=1.5, color="white")+
+  scale_fill_manual(values=c("#8fa091","#8dc1aa")) +
+  labs(x = "", y="FB Ad Calls Booked", fill="Year") +
+  scale_y_continuous(limits = c(0,130), breaks = seq(0,130,25)) +
+     theme(axis.title = element_text(size = 20))
+
+grid.arrange(t_fc, t_fa, nrow=1)
+
+```
+
+### 
+
+```{r, fig.width=12, fig.height=5}
+
+t_wc <- ggplot(total, aes(x=year, y=web_call_booked, fill=year)) +
+  geom_bar(stat="identity") +
+  geom_text(aes(label=prettyNum(web_call_booked, big.mark=",", 
+                                scientific=FALSE)), vjust=1.5, color="white")+
+  scale_fill_manual(values=c("#8fa091","#8dc1aa")) +
+  labs(x = "", y="Web Calls Booked", fill="Year") +
+  scale_y_continuous(limits = c(0,900)) +
+     theme(axis.title = element_text(size = 20))
+
+t_cb <- ggplot(total, aes(x=year, y=total_calls_booked, fill=year)) +
+  geom_bar(stat="identity") +
+  geom_text(aes(label=prettyNum(total_calls_booked, big.mark=",", 
+                                scientific=FALSE)), vjust=1.5, color="white")+
+  scale_fill_manual(values=c("#8fa091","#8dc1aa")) +
+  labs(x = "", y="Total Calls Booked", fill="Year") +
+  scale_y_continuous(limits = c(0,1400), breaks = seq(0,1400,200)) +
+     theme(axis.title = element_text(size = 20))
+
+grid.arrange(t_wc,t_cb,nrow=1)
+
+```
+
+### 
+
+```{r, fig.width=12, fig.height=5}
+
+t_ct <- ggplot(total, aes(x=year, y=total_calls_taken, fill=year)) +
+  geom_bar(stat="identity") +
+  geom_text(aes(label=prettyNum(total_calls_taken, big.mark=",", 
+                                scientific=FALSE)), vjust=1.5, color="white")+
+  scale_fill_manual(values=c("#8fa091","#8dc1aa")) +
+  labs(x = "", y="Total Calls Taken", fill="Year") +
+  scale_y_continuous(limits = c(0,1200), breaks = seq(0,1200,200)) +
+     theme(axis.title = element_text(size = 20))
+
+t_cl <- ggplot(total, aes(x=year, y=closes, fill=year)) +
+  geom_bar(stat="identity") +
+  geom_text(aes(label=prettyNum(closes, big.mark=",", 
+                                scientific=FALSE)), vjust=1.5, color="white")+
+  scale_fill_manual(values=c("#8fa091","#8dc1aa")) +
+  labs(x = "", y="Closes", fill="Year") +
+  scale_y_continuous(limits = c(0,340), breaks = seq(0,340,50)) +
+     theme(axis.title = element_text(size = 20))
+
+grid.arrange(t_ct,t_cl,nrow=1)
+
+```
+
+### 
+
+```{r, fig.width=14, fig.height=5}
+
+t_cash <- ggplot(total, aes(x=year, y=cash, fill=year)) +
+  geom_bar(stat="identity") +
+  geom_text(aes(label= paste0("$",prettyNum(cash, big.mark=",", 
+                                scientific=FALSE))), vjust=1.5, color="white", size=6)+
+  scale_fill_manual(values=c("#137a63","#0a3a2a")) +
+  labs(x = "", y="Cash", fill="Year") +
+  scale_y_continuous(limits = c(0,720000), breaks = seq(0,720000,100000), labels=scales::dollar_format()) +
+     theme(axis.title = element_text(size = 20))
+
+t_rev <- ggplot(total, aes(x=year, y=revenue, fill=year)) +
+  geom_bar(stat="identity") +
+  geom_text(aes(label= paste0("$",prettyNum(revenue, big.mark=",", 
+                                scientific=FALSE))), vjust=1.5, color="white", size=6)+
+  scale_fill_manual(values=c("#137a63","#0a3a2a")) +
+  labs(x = "", y="Revenue", fill="Year") +
+  scale_y_continuous(limits = c(0,850000), breaks = seq(0,850000,100000), labels=scales::dollar_format()) +
+     theme(axis.title = element_text(size = 20))
+
+grid.arrange(t_cash,t_rev,nrow=1)
+
+
+
+```
+
+Sales Summary
+================================================================================
+
+<center><b><font size="8"> Sales Summary </font></b></center> 
+
+```{r, fig.width=12, fig.height=12}
+# Reading Scores card
+scorecard <- read_excel("scorecard.xlsx", sheet = "Data", range = "A30:U71")
+
+# Extracting column names
+nn <- read_excel("scorecard.xlsx", sheet = "Data", range = "A1:U1")
+
+# Assigning column names
+nn <- colnames(nn)
+colnames(scorecard) <- nn
+colnames(scorecard)[1] <- "date"
+
+scorecard <- scorecard %>% clean_names()
+scorecard$date <- as.Date(scorecard$date)
+
+```
+
+Column {data-width=150}
+---------------------------------------------------------------------------------
+
+### Summary 
+```{r, fig.width=6, fig.height=4}
+sum_leads <- as.data.frame(t(as.data.frame(as.list((summary(scorecard$leads))))))
+rownames(sum_leads) <- c("Minium", "1st Q", "Median", "Mean", "3rd Q", "Maximum")
+colnames(sum_leads) <- c("value")
+sum_leads$value <-  round(sum_leads$value,0)
+sum_leads
+```
+
+### Summary 
+```{r, fig.width=6, fig.height=4}
+sum_total_sales <- as.data.frame(t(as.data.frame(as.list((summary(scorecard$total_sales))))))
+rownames(sum_total_sales) <- c("Minium", "1st Q", "Median", "Mean", "3rd Q", "Maximum")
+colnames(sum_total_sales) <- c("value")
+sum_total_sales$value <-  round(sum_total_sales$value,0)
+sum_total_sales
+```
+### Summary 
+```{r, fig.width=6, fig.height=4}
+sum_sales_from_ads <- as.data.frame(t(as.data.frame(as.list((summary(scorecard$sales_from_ads))))))
+rownames(sum_sales_from_ads) <- c("Minium", "1st Q", "Median", "Mean", "3rd Q", "Maximum", "na")
+colnames(sum_sales_from_ads) <- c("value")
+sum_sales_from_ads$value <-  round(sum_sales_from_ads$value,0)
+sum_sales_from_ads<- slice(sum_sales_from_ads, -7)
+sum_sales_from_ads
+```
+
+### Summary 
+```{r, fig.width=6, fig.height=4}
+
+sum_ad_expense <- as.data.frame(t(as.data.frame(as.list((summary(scorecard$ad_expense))))))
+rownames(sum_ad_expense) <- c("Minium", "1st Q", "Median", "Mean", "3rd Q", "Maximum")
+colnames(sum_ad_expense) <- c("value")
+sum_ad_expense$value <-  round(sum_ad_expense$value,0)
+sum_ad_expense
+```
+
+### Summary 
+```{r, fig.width=6, fig.height=4}
+sum_cr <- as.data.frame(t(as.data.frame(as.list((summary(scorecard$conversion_rate_6))))))
+rownames(sum_cr) <- c("Minium", "1st Q", "Median", "Mean", "3rd Q", "Maximum")
+colnames(sum_cr) <- c("value")
+sum_cr$value <-  round(sum_cr$value,0)
+sum_cr
+```
+
+### Summary 
+```{r, fig.width=6, fig.height=4}
+sum_tnos <- as.data.frame(t(as.data.frame(as.list((summary(scorecard$total_number_of_sales_number_of_new_clients_over_1k_rev))))))
+rownames(sum_tnos) <- c("Minium", "1st Q", "Median", "Mean", "3rd Q", "Maximum")
+colnames(sum_tnos) <- c("value")
+sum_tnos$value <-  round(sum_tnos$value,0)
+sum_tnos
+```
+
+### Summary 
+```{r, fig.width=6, fig.height=4}
+sum_nosl <- as.data.frame(t(as.data.frame(as.list((summary(scorecard$number_of_sales_from_ads))))))
+rownames(sum_nosl) <- c("Minium", "1st Q", "Median", "Mean", "3rd Q", "Maximum", "na")
+colnames(sum_nosl) <- c("value")
+sum_nosl$value <-  round(sum_nosl$value,0)
+sum_nosl<- slice(sum_nosl, -7)
+sum_nosl
+```
+
+
+
+### Summary 
+```{r, fig.width=6, fig.height=4}
+sum_mrr <- as.data.frame(t(as.data.frame(as.list((summary(scorecard$mrr_last_week))))))
+rownames(sum_mrr) <- c("Minium", "1st Q", "Median", "Mean", "3rd Q", "Maximum")
+colnames(sum_mrr) <- c("value")
+sum_mrr$value <-  round(sum_mrr$value,0)
+sum_mrr
+```
+
+
+### Summary 
+```{r, fig.width=6, fig.height=4}
+sum_sd <- as.data.frame(t(as.data.frame(as.list((summary(scorecard$standard_work))))))
+rownames(sum_sd) <- c("Minium", "1st Q", "Median", "Mean", "3rd Q", "Maximum")
+colnames(sum_sd) <- c("value")
+sum_sd$value <-  round(sum_sd$value,1)
+sum_sd
+```
+
+
+### Summary 
+```{r, fig.width=6, fig.height=4}
+sum_r <- as.data.frame(t(as.data.frame(as.list((summary(scorecard$refunds))))))
+rownames(sum_r) <- c("Minium", "1st Q", "Median", "Mean", "3rd Q", "Maximum")
+colnames(sum_r) <- c("value")
+sum_r$value <-  round(sum_r$value,0)
+sum_r
+```
+
+Column {data-width=600}
+---------------------------------------------------------------------------------
+
+### Leads 
+```{r, fig.width=9, fig.height=6}
+ggplot(scorecard, aes(x=date, y=leads)) +
+geom_bar(stat="identity", fill="#8bc2a1") +
+  geom_point(color="#15b4c7") +
+theme_bw() +
+scale_x_date(limits = as.Date(c("2023-01-01", "2023-12-01")), breaks = breaks_pretty(18)) +
+theme(axis.text.x=element_text(angle=90,hjust=1)) +
+labs(x="", y="Leads", subtitle="Owner John - Marketing Team") +
+geom_text(aes(label = leads), color = "black", size = 2.5, vjust=-0.8) +
+theme(axis.title = element_text(size = 20))
+```
+
+### Total Sales 
+```{r, fig.width=9, fig.height=6}
+ggplot(scorecard, aes(x=date, y=total_sales)) +
+geom_bar(stat="identity", fill="#438644") +
+geom_point(color="#75b4c0") +
+theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1)) +
+scale_x_date(limits = as.Date(c("2023-01-01", "2023-12-01")), breaks = breaks_pretty(18)) +
+labs(x="", y="Total Sales", subtitle="Owner John - Sales Team") +
+geom_text(aes(label = if_else(total_sales > 22000, paste("$",prettyNum(round(total_sales,0),big.mark=",")), 
+                              paste(""))), color = "black", size = 2.5, vjust=-0.8) +
+scale_y_continuous(labels=scales::dollar_format()) +
+  theme(axis.title = element_text(size = 20))
+```
+
+### Sales From Ads 
+```{r, fig.width=9, fig.height=6}
+ggplot(scorecard, aes(x=date, y=sales_from_ads)) +
+  geom_bar(stat="identity", fill="#b1624eff") +
+  geom_point(color="#97bc62ff", alpha=0.5) +
+  theme_bw() +
+  scale_x_date(limits = as.Date(c("2023-01-01", "2023-12-01")), breaks = breaks_pretty(18)) +
+  theme(axis.text.x=element_text(angle=90,hjust=1)) +
+  labs(x="", y="Sales From Ads", subtitle="Owner John - Operations Team") +
+  geom_text(aes(label = if_else(sales_from_ads > 7000, paste("$",prettyNum(round(sales_from_ads,0),big.mark=",")), 
+                                paste(""))), color = "black", size = 2.5, vjust=-0.8) +
+  scale_y_continuous(labels=scales::dollar_format()) +
+  theme(axis.title = element_text(size = 20))
+```
+
+### Ad's Expense 
+```{r, fig.width=9, fig.height=6}
+ggplot(scorecard, aes(x=date, y=ad_expense)) +
+  geom_bar(stat="identity", fill="#a9f1dc") +
+  geom_point(color="#91b38e", alpha=0.5) +
+  theme_bw() +
+  scale_x_date(limits = as.Date(c("2023-01-01", "2023-12-01")), breaks = breaks_pretty(18)) +
+  theme(axis.text.x=element_text(angle=90,hjust=1)) +
+  labs(x="", y="Ad's Expense", subtitle="Owner Christina - Operations Team") +
+  geom_text(aes(label = if_else(ad_expense > 1600, paste("$",prettyNum(round(ad_expense,0),big.mark=",")), 
+                                paste(""))), color = "black", size = 2.5, vjust=-0.8) +
+  scale_y_continuous(labels=scales::dollar_format()) +
+  theme(axis.title = element_text(size = 20))
+```
+
+
+### Conversion Rate 
+```{r, fig.width=9, fig.height=6}
+ggplot(scorecard, aes(x=date, y=conversion_rate_6)) +
+  geom_bar(stat="identity", fill="#797687") +
+  geom_point(color="#c2c2c2", alpha=0.5) +
+  theme_bw() +
+  scale_x_date(limits = as.Date(c("2023-01-01", "2023-12-01")), breaks = breaks_pretty(18)) +
+  theme(axis.text.x=element_text(angle=90,hjust=1)) +
+  labs(x="", y="Conversion Rate", subtitle="Owner John - Sarah Team") +
+  scale_y_continuous(labels=scales::percent_format()) +
+  geom_text(aes(label = if_else(conversion_rate_6 > 0.3, paste0((conversion_rate_6 * 100),"%"),"")
+                ), color = "black", size = 2.5, vjust=-0.8) +
+  theme(axis.title = element_text(size = 20))
+```
+
+### Total Number of Sales - New Clients Over 1k
+```{r, fig.width=9, fig.height=6}
+ggplot(scorecard, aes(x=date, y=total_number_of_sales_number_of_new_clients_over_1k_rev)) +
+  geom_bar(stat="identity", fill="#46b47f") +
+  geom_point(color="#295abb", alpha=0.5) +
+  theme_bw() +
+  scale_x_date(limits = as.Date(c("2023-01-01", "2023-12-01")), breaks = breaks_pretty(18)) +
+  theme(axis.text.x=element_text(angle=90,hjust=1)) +
+  labs(x="", y="Total Number of Sales", 
+       subtitle="Owner John - Operations Team") +
+geom_text(aes(label = total_number_of_sales_number_of_new_clients_over_1k_rev), color = "black", size = 2.5, vjust=-0.8) +
+theme(axis.title = element_text(size = 20))
+```
+
+### Number of Sales from Ads 
+```{r, fig.width=9, fig.height=6}
+ggplot(scorecard, aes(x=date, y=number_of_sales_from_ads)) +
+  geom_bar(stat="identity", fill="#0063b2ff") +
+  geom_point(color="#b1b3b3ff", alpha=0.5) +
+  theme_bw() +
+  scale_x_date(limits = as.Date(c("2023-01-01", "2023-12-01")), breaks = breaks_pretty(18)) +
+  theme(axis.text.x=element_text(angle=90,hjust=1)) +
+  labs(x="", y="Number of Sales from Ads", 
+       subtitle="Owner John - Operations Team") +
+   geom_text(aes(label = number_of_sales_from_ads), color = "black", size = 2.5, vjust=-0.8) +
+  theme(axis.title = element_text(size = 20))
+```
+
+### MRR Last Week 
+```{r, fig.width=9, fig.height=6}
+ggplot(scorecard, aes(x=date, y=mrr_last_week)) +
+  geom_line(color="#2bae66ff", linewidth=1) +
+  geom_point(color="#fcf6f5ff", alpha=0.5) +
+  theme_bw() +
+  scale_x_date(limits = as.Date(c("2023-01-01", "2023-12-01")), breaks = breaks_pretty(18)) +
+  theme(axis.text.x=element_text(angle=90,hjust=1)) +
+  labs(x="", y="MRR Last Week", subtitle="Owner Laureen - Operations Team") +
+  scale_y_continuous(labels=scales::dollar_format()) +
+  theme(axis.title = element_text(size = 20))
+```
+
+### Standard Work
+```{r, fig.width=9, fig.height=6}
+ggplot(scorecard, aes(x=date, y=standard_work)) +
+  geom_line(color="#b1b3b3ff", linewidth=1) +
+  geom_point(color="#2bae66ff", alpha=0.5) +
+  theme_bw() +
+  scale_x_date(limits = as.Date(c("2023-01-01", "2023-12-01")), breaks = breaks_pretty(18)) +
+  theme(axis.text.x=element_text(angle=90,hjust=1)) +
+  labs(x="", y="Standard Work", subtitle="Owner Laureen - Operations Team") +
+  scale_y_continuous(labels=scales::percent_format()) +
+  theme(axis.title = element_text(size = 20))
+```
+
+### Refunds
+```{r, fig.width=9, fig.height=6}
+ggplot(scorecard, aes(x=date, y=refunds)) +
+  geom_bar(stat="identity", fill="#616247ff") +
+  geom_point(color="#daa03dff", alpha=0.5) +
+  theme_bw() +
+  scale_x_date(limits = as.Date(c("2023-01-01", "2023-12-01")), breaks = breaks_pretty(18)) +
+  theme(axis.text.x=element_text(angle=90,hjust=1)) +
+  labs(x="", y="Refunds", subtitle="Owner Laureen - Operations Team") +
+  scale_y_continuous(labels=scales::dollar_format()) +
+  geom_text(aes(label = if_else(refunds > 800, paste("$",prettyNum(round(refunds,0),big.mark=",")), 
+                              paste(""))), color = "black", size = 3, vjust=-0.8) +
+  scale_y_continuous(labels=scales::dollar_format()) +
+  theme(axis.title = element_text(size = 20))
+```
+
+
+Column {data-width=250}
+---------------------------------------------------------------------------------
+
+### Histogram
+```{r, fig.width=6, fig.height=4}
+ggplot(scorecard, aes(x=leads)) +
+  geom_histogram(color="black", fill="#8bc2a1") +
+  theme_bw() +
+  labs(title="Leads", x="Leads")
+```
+
+### Histogram
+```{r, fig.width=6, fig.height=4}
+ggplot(scorecard, aes(x=total_sales)) +
+  geom_histogram(color="black", fill="#438644") +
+  theme_bw() +
+  labs(title="Total Sales", x="Total Sales")
+```
+
+### Histogram
+```{r, fig.width=6, fig.height=4}
+ggplot(scorecard, aes(x=sales_from_ads)) +
+  geom_histogram(color="black", fill="#b1624eff") +
+  theme_bw() +
+  labs(title="Sales from Ads", x="Sales from Ads")
+```
+
+### Histogram
+```{r, fig.width=6, fig.height=4}
+ggplot(scorecard, aes(x=ad_expense)) +
+  geom_histogram(color="black", fill="#a9f1dc") +
+  theme_bw() +
+  labs(title="Ad Expense", x="Ad Expense")
+```
+
+### Histogram
+```{r, fig.width=6, fig.height=4}
+ggplot(scorecard, aes(x=conversion_rate_6)) +
+  geom_histogram(color="black", fill="#797687") +
+  theme_bw() +
+  labs(title="Conversion Rate", x="Conversion Rate")
+```
+
+### Histogram
+```{r, fig.width=6, fig.height=4}
+ggplot(scorecard, aes(x=total_number_of_sales_number_of_new_clients_over_1k_rev)) +
+  geom_histogram(color="black", fill="#46b47f") +
+  theme_bw() +
+  labs(title="New Clientes # of Sales", x="New Clientes # of Sales")
+```
+
+### Histogram
+```{r, fig.width=6, fig.height=4}
+ggplot(scorecard, aes(x=number_of_sales_from_ads)) +
+  geom_histogram(color="black", fill="#0063b2ff") +
+  theme_bw() +
+  labs(title="# Sales from Ads", x="# Sales from Ads")
+```
+
+### Histogram
+```{r, fig.width=6, fig.height=4}
+ggplot(scorecard, aes(x=mrr_last_week)) +
+  geom_histogram(color="black", fill="#2bae66ff") +
+  theme_bw() +
+  labs(title="MRR Last Week", x="MRR Last Week")
+```
+
+### Histogram
+```{r, fig.width=6, fig.height=4}
+ggplot(scorecard, aes(x=standard_work)) +
+  geom_histogram(color="black", fill="#b1b3b3ff") +
+  theme_bw() +
+  labs(title="Standard Work", x="Standard Work")
+```
+
+### Histogram
+```{r, fig.width=6, fig.height=4}
+ggplot(scorecard, aes(x=refunds)) +
+  geom_histogram(color="black", fill="#616247ff") +
+  theme_bw() +
+  labs(title="Refunds", x="Refunds")
+```
+
+Courtney
+================================================================================
+
+<center><b><font size="8"> Courtney </font></b></center> 
+
+### Ad's Spend
+
+```{r, fig.width=16, fig.height=5, echo = FALSE, results=FALSE}
+
+      courtney_2022 <- as.data.frame(cbind(
+      colnames(as.data.frame(read_excel("kpi.xlsx", sheet = "January 2022", range = "G44:K44"))),
+      colnames(as.data.frame(read_excel("kpi.xlsx", sheet = "February 2022", range = "G44:K44"))),
+      colnames(as.data.frame(read_excel("kpi.xlsx", sheet = "March 2022", range = "G44:K44"))),
+      colnames(as.data.frame(read_excel("kpi.xlsx", sheet = "April 2022", range = "G44:K44"))),
+      colnames(as.data.frame(read_excel("kpi.xlsx", sheet = "May 2022", range = "G44:K44"))),
+      colnames(as.data.frame(read_excel("kpi.xlsx", sheet = "June 2022", range = "G44:K44"))),
+      colnames(as.data.frame(read_excel("kpi.xlsx", sheet = "July 2022", range = "G44:K44"))),
+      colnames(as.data.frame(read_excel("kpi.xlsx", sheet = "August 2022", range = "G44:K44"))),
+      colnames(as.data.frame(read_excel("kpi.xlsx", sheet = "September 2022", range = "G44:K44"))),
+      colnames(as.data.frame(read_excel("kpi.xlsx", sheet = "October 2022", range = "G44:K44"))),
+      colnames(as.data.frame(read_excel("kpi.xlsx", sheet = "November 2022", range = "G44:K44"))),
+      colnames(as.data.frame(read_excel("kpi.xlsx", sheet = "December 2022", range = "G44:K44")))))
+      
+courtney_2022 <- courtney_2022 %>%
+      mutate_all(as.numeric)
+
+courtney_2022 <- as.data.frame(t(courtney_2022))
+      
+courtney_2022 <- cbind(my(c("01-2022","02-2022","03-2022","04-2022",
+           "05-2022","06-2022","07-2022","08-2022",
+           "09-2022","10-2022","11-2022","12-2022")), courtney_2022)      
+
+
+colnames(courtney_2022) <- c("Date", "Ad Spend", "Group Members", "Reach Outs", "Convos", "FB Calls Booked")
+
+
+
+courtney_2022 <-  courtney_2022 %>% clean_names()
+
+courtney_2022[is.na(courtney_2022)] <- 0 
+
+courtney_2022$cont <- 0
+rownames(courtney_2022)<-NULL
+
+
+
+courtney_2023 <- as.data.frame(cbind(
+  colnames(as.data.frame(read_excel("kpi.xlsx", sheet = "January 2023", range = "G44:K44"))),
+  colnames(as.data.frame(read_excel("kpi.xlsx", sheet = "February 2023", range = "G44:K44"))),
+  colnames(as.data.frame(read_excel("kpi.xlsx", sheet = "March 2023", range = "G44:K44"))),
+  colnames(as.data.frame(read_excel("kpi.xlsx", sheet = "April 2023", range = "G44:K44"))),
+  colnames(as.data.frame(read_excel("kpi.xlsx", sheet = "May 2023", range = "G44:K44"))),
+  colnames(as.data.frame(read_excel("kpi.xlsx", sheet = "June 2023", range = "G44:K44"))),
+  colnames(as.data.frame(read_excel("kpi.xlsx", sheet = "July 2023", range = "G44:K44"))),
+  colnames(as.data.frame(read_excel("kpi.xlsx", sheet = "August 2023", range = "G44:K44"))),
+  colnames(as.data.frame(read_excel("kpi.xlsx", sheet = "September 2023", range = "G44:K44"))),
+  colnames(as.data.frame(read_excel("kpi.xlsx", sheet = "October 2023", range = "G44:K44")))
+  ))
+
+courtney_2023 <- courtney_2023 %>%
+  mutate_all(as.numeric)
+
+courtney_2023 <- as.data.frame(t(courtney_2023))
+
+courtney_2023 <- cbind(my(c("01-2023","02-2023","03-2023","04-2023",
+                            "05-2023","06-2023","07-2023","08-2023",
+                            "09-2023","10-2023")), courtney_2023)      
+
+
+colnames(courtney_2023) <- c("Date", "Ad Spend", "Group Members", "Reach Outs", "Convos", "FB Calls Booked")
+courtney_2023 <-  courtney_2023 %>% clean_names()
+
+courtney_2023[is.na(courtney_2023)] <- 0 
+
+courtney_2023_b <- as.data.frame(cbind(
+  colnames(as.data.frame(read_excel("kpi.xlsx", sheet = "April 2023", range = "L44:N44"))),
+  colnames(as.data.frame(read_excel("kpi.xlsx", sheet = "May 2023", range = "L44:N44"))),
+  colnames(as.data.frame(read_excel("kpi.xlsx", sheet = "June 2023", range = "L44:N44"))),
+  colnames(as.data.frame(read_excel("kpi.xlsx", sheet = "July 2023", range = "L44:N44"))),
+  colnames(as.data.frame(read_excel("kpi.xlsx", sheet = "August 2023", range = "L44:N44"))),
+  colnames(as.data.frame(read_excel("kpi.xlsx", sheet = "September 2023", range = "L44:N44"))),
+  colnames(as.data.frame(read_excel("kpi.xlsx", sheet = "October 2023", range = "L44:N44")))
+))
+
+courtney_2023_b$V3 <- substr(courtney_2023_b$V3, 1, 1)  
+courtney_2023_b$V5 <- substr(courtney_2023_b$V5, 1, 1)  
+courtney_2023_b$V6 <- substr(courtney_2023_b$V6, 1, 1)  
+
+courtney_2023_b <- courtney_2023_b %>%
+  mutate_all(as.numeric)
+
+courtney_2023_b <- as.data.frame(t(courtney_2023_b))
+
+courtney_2023_b <- cbind(my(c("04-2023",
+                            "05-2023","06-2023","07-2023","08-2023",
+                            "09-2023","10-2023")), courtney_2023_b)      
+
+
+colnames(courtney_2023_b) <- c("Date", "IG Reach Outs", "IG Convos", "IG Calls Booked")
+courtney_2023_b <-  courtney_2023_b %>% clean_names()
+
+courtney_2023_b[is.na(courtney_2023_b)] <- 0 
+
+# Addind zeros to 2023 dataframe, Instagram variables
+
+
+zeros <- data.frame(c("01-2023", "02-2023", "03-2023"),
+                       c(0,0,0),
+                       c(0,0,0),
+                       c(0,0,0))
+colnames(zeros) <- c("date","ig_reach_outs", "ig_convos", "ig_calls_booked")
+
+zeros$date <- my(zeros$date)
+class(zeros$date)
+
+courtney_2023_c <- rbind(zeros, courtney_2023_b)
+courtney_2023_c <- subset(courtney_2023_c, select = -date)
+courtney_2023 <- cbind(courtney_2023, courtney_2023_c)
+
+rownames(courtney_2023)<-NULL
+
+
+
+```
+
+```{r, fig.width=16, fig.height=5}
+  a <- ggplot(courtney_2022, aes(x=date, y=ad_spend)) +
+  geom_bar(stat="identity", fill="#0A4D68") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1)) +
+  labs(x="", y="Ad Spend", title="2022")  +
+  geom_text(aes(label = paste("$",prettyNum(ad_spend, big.mark=",", scientific=FALSE))), color = "white", size = 2.8, vjust=2) +
+  ylim(0,7000) +
+  scale_y_continuous(labels=scales::dollar_format(), limits = c(0,7000)) +
+  theme(axis.title = element_text(size = 20))
+
+  b <- ggplot(courtney_2023, aes(x=date, y=ad_spend)) +
+  geom_bar(stat="identity", fill="#0A4D68") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1)) +
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-31")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = paste("$",prettyNum(round(ad_spend,0), big.mark=",", scientific=FALSE))), color = "white", size = 2.8, vjust=2) +
+  ylim(0,7000) +
+  scale_y_continuous(labels=scales::dollar_format(), limits = c(0,7000)) +
+  theme(axis.title = element_text(size = 20))
+
+ grid.arrange(a , b, nrow=1)
+```
+
+### Group Members
+
+```{r, fig.width=16, fig.height=5}
+  c <- ggplot(courtney_2022, aes(x=date, y=group_members)) +
+  geom_bar(stat="identity", fill="#088395") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1)) +
+  labs(x="", y="Group Members", title="2022")  +
+  geom_text(aes(label = round(group_members,0)), color = "white", size = 2.8, vjust=2) +
+  ylim(0,300) +
+  theme(axis.title = element_text(size = 20))
+
+  d <- ggplot(courtney_2023, aes(x=date, y=group_members)) +
+  geom_bar(stat="identity", fill="#088395") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1)) +
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-31")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = round(group_members,0)), color = "white", size = 2.8, vjust=2) +
+  ylim(0,300) +
+  theme(axis.title = element_text(size = 20))
+
+ grid.arrange(c , d, nrow=1)
+```
+
+### Facebook Reach Outs
+
+```{r, fig.width=16, fig.height=5}
+  e <- ggplot(courtney_2022, aes(x=date, y=reach_outs)) +
+  geom_bar(stat="identity", fill="#05BFDB") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1)) +
+  labs(x="", y="FB Reach Outs", title="2022") +
+  geom_text(aes(label = round(reach_outs,0)), color = "black", size = 2.8, vjust=2) +
+  ylim(0,700) +
+  theme(axis.title = element_text(size = 20))
+
+  f <- ggplot(courtney_2023, aes(x=date, y=reach_outs)) +
+  geom_bar(stat="identity", fill="#05BFDB") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1)) +
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-31")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = round(reach_outs,0)), color = "black", size = 2.8, vjust=2) +
+  ylim(0,700) +
+  theme(axis.title = element_text(size = 20))
+
+ grid.arrange(e , f, nrow=1)
+```
+
+### Facebook Convos
+
+```{r, fig.width=16, fig.height=5}
+g <- ggplot(courtney_2022, aes(x=date, y=convos)) +
+  geom_bar(stat="identity", fill="#3EB489") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1)) +
+  labs(x="", y="FB Convos", title="2022") +
+  geom_text(aes(label = round(convos,0)), color = "black", size = 2.8, vjust=2) +
+  ylim(0,350) +
+  theme(axis.title = element_text(size = 20))
+
+h <- ggplot(courtney_2023, aes(x=date, y=convos)) +
+  geom_bar(stat="identity", fill="#3EB489") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1)) +
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-31")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = round(convos,0)), color = "black", size = 2.8, vjust=2) +
+  ylim(0,350) +
+  theme(axis.title = element_text(size = 20))
+
+ grid.arrange(g , h, nrow=1)
+```
+
+### Facebook Calls Booked
+
+```{r, fig.width=16, fig.height=5}
+i <- ggplot(courtney_2022, aes(x=date, y=fb_calls_booked)) +
+  geom_bar(stat="identity", fill="#B9EDDD") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1)) +
+  labs(x="", y="FB Calls Booked", title="2022") +
+  geom_text(aes(label = round(fb_calls_booked,0)), color = "black", size = 2.8, vjust=2) +
+  ylim(0,90) +
+  theme(axis.title = element_text(size = 20))
+
+j <- ggplot(courtney_2023, aes(x=date, y=fb_calls_booked)) +
+  geom_bar(stat="identity", fill="#B9EDDD") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1)) +
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-31")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = round(fb_calls_booked,0)), color = "black", size = 2.8, vjust=2) +
+  ylim(0,90) +
+  theme(axis.title = element_text(size = 20))
+
+ grid.arrange(i , j, nrow=1)
+```
+
+### Instagram Reach Outs
+
+```{r, fig.width=16, fig.height=5}
+k <- ggplot(courtney_2022, aes(x=date, y = cont)) +
+  geom_bar(stat="identity", fill="#87CBB9") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1)) +
+  labs(x="", y="IG Reach Outs", title="2022") +
+  geom_text(aes(label = round(cont,0)), color = "white", size = 2.8, vjust=2) +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  scale_y_continuous(limits = c(0,12), breaks = c(3,6,9,12)) +
+  theme(axis.title = element_text(size = 20))
+
+l <- ggplot(courtney_2023_b, aes(x=date, y=ig_reach_outs)) +
+  geom_bar(stat="identity", fill="#87CBB9") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1)) +
+  labs(x="", y="", title="2023") +
+  geom_text(aes(label = round(ig_reach_outs,0)), color = "black", size = 2.8, vjust=2) +
+  scale_x_date(limits = as.Date(c("2023-01-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  scale_y_continuous(limits = c(0,12), breaks = c(3,6,9,12)) +
+  theme(axis.title = element_text(size = 20))
+
+ grid.arrange(k , l, nrow=1)
+```
+
+### Instagram Convos
+
+```{r, fig.width=16, fig.height=5}
+m <- ggplot(courtney_2022, aes(x=date, y = cont)) +
+  geom_bar(stat="identity", fill="blue2") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1)) +
+  labs(x="", y="IG Convos", title="2022") +
+  geom_text(aes(label = round(cont,0)), color = "white", size = 2.8, vjust=2) +
+  scale_y_continuous(limits = c(0,9), breaks = c(3,6,9)) +
+  theme(axis.title = element_text(size = 20))
+
+n <- ggplot(courtney_2023_b, aes(x=date, y=ig_convos)) +
+    geom_bar(stat="identity", fill="#569DAA") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1)) +
+  labs(x="", y="", title="2023") +
+  geom_text(aes(label = round(ig_convos,0)), color = "white", size = 2.8, vjust=2) +
+  scale_x_date(limits = as.Date(c("2023-01-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  scale_y_continuous(limits = c(0,9), breaks = c(3,6,9)) +
+  theme(axis.title = element_text(size = 20))
+
+ grid.arrange(m , n, nrow=1)
+```
+
+### Instagram Calls Booked
+
+```{r, fig.width=16, fig.height=5}
+o <- ggplot(courtney_2022, aes(x=date, y = cont)) +
+  geom_bar(stat="identity", fill="blue2") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1)) +
+  labs(x="", y="IG Booked", title="2022") +
+  geom_text(aes(label = round(cont,0)), color = "white", size = 2.8, vjust=2) +
+  ylim(0,8) +
+  theme(axis.title = element_text(size = 20))
+
+p <- ggplot(courtney_2023_b, aes(x=date, y=ig_calls_booked)) +
+  geom_bar(stat="identity", fill="#577D86") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1)) +
+  labs(x="", y="", title="2023") +
+  geom_text(aes(label = round(ig_calls_booked,0)), color = "white", size = 2.8, vjust=2) +
+  scale_x_date(limits = as.Date(c("2023-01-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  ylim(0,8) +
+  theme(axis.title = element_text(size = 20))
+
+ grid.arrange(o , p, nrow=1)
+```
+
+### Over Time Data 2023
+
+```{css, echo=FALSE}
+.dataTables_scrollBody {
+    height:450px !important;
+    max-height:450px !important;
+}
+
+```
+
+```{r, fig.width=8, fig.height=8}
+courtney_2023 %>% 
+   mutate(ad_spend = paste0("$", prettyNum(ad_spend, big.mark=",", scientific=FALSE))) %>%
+  DT::datatable(height = 2000, colnames = c("Date","Ad Spend","Group Members",
+                                      "FB Reach Outs","FB Convos", "FB Calls Booked",
+                                      "IG Reach Outs", "IG Convos", "IG Calls Booked"),
+                class= 'stripe compact nowrap',
+                options=list(
+  initComplete = JS(
+        "function(settings, json) {",
+        "$(this.api().table().container()).css({'font-size': '80%'});",
+        "}"))) 
+
+```
+
+### Over Time Data 2022
+
+```{r, fig.width=8, fig.height=8}
+courtney_2022_b  <- courtney_2022
+
+courtney_2022_b$cont <- NULL
+
+courtney_2022_b %>% 
+  mutate(ad_spend = paste0("$", prettyNum(ad_spend, big.mark=",", scientific=FALSE))) %>%
+  DT::datatable(height = 2000, colnames = c("Date","Ad Spend","Group Members",
+                                      "FB Reach Outs","FB Convos", "FB Calls Booked"),
+                class= 'stripe compact nowrap',
+                                options=list(
+  initComplete = JS(
+        "function(settings, json) {",
+        "$(this.api().table().container()).css({'font-size': '80%'});",
+        "}"))) 
+```
+
+# Training Intro Calls {data-navmenu="Sales Person 1"}
+
+<center><b><font size="8"> Training Into Calls </font></b></center> 
+
+### Calls Booked 
+
+```{r, fig.width=16, fig.height=5, echo = FALSE, results=FALSE}
+sp1_tra_2022 <- as.data.frame(
+  cbind(
+c(0),
+c(0),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "March 2022", range = "Z44:AD44"))),1,3)),
+                substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "March 2022", range = "AE44:AF44"))),1,5)),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "April 2022", range = "Z44:AD44"))),1,3)),
+                substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "April 2022", range = "AE44:AF44"))),1,5)),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "May 2022", range = "V44:Z44"))),1,2)),
+                substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "May 2022", range = "AA44:AB44"))),1,5)),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "June 2022", range = "V44:Z44"))),1,1)),
+                substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "June 2022", range = "AA44:AB44"))),1,1)),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "July 2022", range = "V44:Z44"))),1,4)),
+                substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "July 2022", range = "AA44:AB44"))),1,4)),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "August 2022", range = "V44:Z44"))),1,4)),
+                substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "August 2022", range = "AA44:AB44"))),1,5)),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "September 2022", range = "V44:Z44"))),1,5)),
+                substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "September 2022", range = "AA44:AB44"))),1,5)),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "October 2022", range = "V44:Z44"))),1,3)),
+  gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "October 2022", range = "AA44:AB44"))),1,5))),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "November 2022", range = "V44:Z44"))),1,3)),
+  gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "November 2022", range = "AA44:AB44"))),1,5))),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "December 2022", range = "V44:Z44"))),1,3)),
+  gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "December 2022", range = "AA44:AB44"))),1,5)))
+))
+
+sp1_tra_2022 <- sp1_tra_2022 %>%
+  mutate_all(as.numeric)
+
+sp1_tra_2022 <- as.data.frame(t(sp1_tra_2022))
+
+sp1_tra_2022 <- cbind(my(c("01-2022","02-2022","03-2022","04-2022",
+                           "05-2022","06-2022","07-2022","08-2022",
+                           "09-2022","10-2022","11-2022","12-2022")), sp1_tra_2022)      
+
+str(sp1_tra_2022)
+
+colnames(sp1_tra_2022) <- c("Date", "Calls Booked", "Calls Taken", "No Shows", "Follow Ups", "Closes", "Cash", "Revenue")
+sp1_tra_2022 <-  sp1_tra_2022 %>% clean_names()
+
+sp1_tra_2022[is.na(sp1_tra_2022)] <- 0 
+
+# Sales Prson 1 - Training into Calls - Jan 2023 - Dec 2023 ------------------------------------------------------------------------
+sp1_tra_2023 <- as.data.frame(
+  cbind(
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "January 2023", range = "V44:Z44"))),1,3)),
+                    substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "January 2023", range = "AA44:AB44"))),1,5)),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "February 2023", range = "V44:Z44"))),1,3)),
+                    substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "February 2023", range = "AA44:AB44"))),1,3)),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "March 2023", range = "V44:Z44"))),1,3)),
+                    substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "March 2023", range = "AA44:AB44"))),1,5)),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "April 2023", range = "Q44:U44"))),1,3)),
+                    substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "April 2023", range = "V44:W44"))),1,5)),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "May 2023", range = "Q44:U44"))),1,2)),
+                    substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "May 2023", range = "V44:W44"))),1,5)),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "June 2023", range = "Q44:U44"))),1,3)),
+                    substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "June 2023", range = "V44:W44"))),1,3)),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "July 2023", range = "Q44:U44"))),1,4)),
+                    substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "July 2023", range = "V44:W44"))),1,1)),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "August 2023", range = "Q44:U44"))),1,3)),
+                    substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "August 2023", range = "V44:W44"))),1,1)),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "September 2023", range = "Q44:U44"))),1,3)),
+                    substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "September 2023", range = "V44:W44"))),1,1)),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "October 2023", range = "Q44:U44"))),1,3)),
+      gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "October 2023", range = "V44:W44"))),1,2))
+  )))
+
+sp1_tra_2023 <- sp1_tra_2023 %>%
+  mutate_all(as.numeric)
+
+sp1_tra_2023 <- as.data.frame(t(sp1_tra_2023))
+
+sp1_tra_2023 <- cbind(my(c("01-2023","02-2023","03-2023","04-2023",
+                           "05-2023","06-2023","07-2023","08-2023",
+                           "09-2023","10-2023")), sp1_tra_2023)      
+
+str(sp1_tra_2023)
+
+colnames(sp1_tra_2023) <- c("Date", "Calls Booked", "Calls Taken", "No Shows", "Follow Ups", "Closes", "Cash", "Revenue")
+sp1_tra_2023 <-  sp1_tra_2023 %>% clean_names()
+
+sp1_tra_2022[is.na(sp1_tra_2022)] <- 0 
+
+ba <- ggplot(sp1_tra_2022, aes(x=date, y=calls_booked)) +
+  geom_bar(stat="identity", fill="#0A4D68") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Calls Booked", title="2022") +
+  geom_text(aes(label = round(calls_booked,0)), color = "white", size = 2.5, vjust=2) +
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,110)
+
+bb <- ggplot(sp1_tra_2023, aes(x=date, y=calls_booked)) +
+  geom_bar(stat="identity", fill="#0A4D68") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-31")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = round(calls_booked,0)), color = "white", size = 2.5, vjust=2) +
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,110)
+
+ grid.arrange(ba , bb, nrow=1)
+```
+
+### Calls Taken
+
+```{r, fig.width=16, fig.height=5}
+
+bc <- ggplot(sp1_tra_2022, aes(x=date, y=calls_taken)) +
+  geom_bar(stat="identity", fill="#088395") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  scale_y_continuous(labels=scales::dollar_format()) +
+  labs(x="", y="Calls Taken", title="2022") +
+  geom_text(aes(label = round(calls_taken,0)), color = "white", size = 2.5, vjust=2) +
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,50) 
+
+bd <- ggplot(sp1_tra_2023, aes(x=date, y=calls_taken)) +
+  geom_bar(stat="identity", fill="#088395") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  scale_y_continuous(labels=scales::dollar_format()) +
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-31")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = round(calls_taken,0)), color = "white", size = 2.5, vjust=2) +
+  ylim(0,50) 
+
+ grid.arrange(bc , bd, nrow=1)
+```
+
+### No Shows
+
+```{r, fig.width=16, fig.height=5}
+
+be <- ggplot(sp1_tra_2022, aes(x=date, y=no_shows)) +
+  geom_bar(stat="identity", fill="#05BFDB") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="No Shows", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(no_shows > 3,paste(round(no_shows,0)),paste(""))), color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,60) 
+
+bf <- ggplot(sp1_tra_2023, aes(x=date, y=no_shows)) +
+  geom_bar(stat="identity", fill="#05BFDB") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(no_shows > 3,paste(round(no_shows,0)),paste(""))), color = "black", size = 2.5, vjust=2) + 
+  ylim(0,60)    
+   
+ grid.arrange(be , bf, nrow=1)
+```
+
+### Follow Ups
+
+```{r, fig.width=16, fig.height=5}
+
+bg <- ggplot(sp1_tra_2022, aes(x=date, y=follow_ups)) +
+  geom_bar(stat="identity", fill="#87CBB9") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Follow Ups", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(follow_ups > 1,paste(round(follow_ups,0)),paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,15) 
+
+bh <- ggplot(sp1_tra_2023, aes(x=date, y=follow_ups)) +
+  geom_bar(stat="identity", fill="#87CBB9") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(follow_ups > 1,paste(round(follow_ups,0)),paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  ylim(0,15)    
+   
+ grid.arrange(bg , bh, nrow=1)
+```
+
+### Closes
+
+```{r, fig.width=16, fig.height=5}
+
+bg <- ggplot(sp1_tra_2022, aes(x=date, y=closes)) +
+  geom_bar(stat="identity", fill="#B9EDDD") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Closes", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(closes > 1,paste(round(closes,0)),paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,15) 
+
+bh <- ggplot(sp1_tra_2023, aes(x=date, y=closes)) +
+  geom_bar(stat="identity", fill="#B9EDDD") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(closes > 1,paste(round(closes,0)),paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  ylim(0,15)    
+   
+ grid.arrange(bg , bh, nrow=1)
+```
+
+### Cash
+
+```{r, fig.width=16, fig.height=5}
+
+bi <- ggplot(sp1_tra_2022, aes(x=date, y=cash)) +
+  geom_bar(stat="identity", fill="#3EB489") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Cash", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+    geom_text(aes(label = if_else(cash > 900,
+                                paste("$",
+                                      prettyNum(paste(round(cash,0)),
+                                      big.mark=",",scientific=FALSE)),
+                                paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  scale_y_continuous(labels=scales::dollar_format(), limits = c(0,22000))
+
+bj <- ggplot(sp1_tra_2023, aes(x=date, y=cash)) +
+  geom_bar(stat="identity", fill="#3EB489") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(cash > 900,
+                                paste("$",
+                                      prettyNum(paste(round(cash,0)),
+                                      big.mark=",",scientific=FALSE)),
+                                paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  scale_y_continuous(labels=scales::dollar_format(), limits = c(0,22000))  
+   
+ grid.arrange(bi, bj, nrow=1)
+```
+
+### Revenue
+
+```{r, fig.width=16, fig.height=5}
+
+bk <- ggplot(sp1_tra_2022, aes(x=date, y=revenue)) +
+  geom_bar(stat="identity", fill="#3EB489") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Revenue", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+    geom_text(aes(label = if_else(revenue > 900,
+                                paste("$",
+                                      prettyNum(paste(round(revenue,0)),
+                                      big.mark=",",scientific=FALSE)),
+                                paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  scale_y_continuous(labels=scales::dollar_format(), limits = c(0,28000))
+
+bl <- ggplot(sp1_tra_2023, aes(x=date, y=revenue)) +
+  geom_bar(stat="identity", fill="#3EB489") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(revenue > 900,
+                                paste("$",
+                                      prettyNum(paste(round(revenue,0)),
+                                      big.mark=",",scientific=FALSE)),
+                                paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  scale_y_continuous(labels=scales::dollar_format(), limits = c(0,28000))  
+   
+ grid.arrange(bk, bl, nrow=1)
+```
+
+### Sales Person 1 - Training Into Calls - 2022    
+
+```{css, echo=FALSE}
+.dataTables_scrollBody {
+    height:450px !important;
+    max-height:450px !important;
+}
+
+```
+
+```{r, fig.width=8, fig.height=8}
+rownames(sp1_tra_2022) <- NULL
+
+sp1_tra_2022 %>% 
+   mutate(cash = paste0("$", prettyNum(cash, big.mark=",", scientific=FALSE))) %>%
+  mutate(revenue = paste0("$", prettyNum(revenue, big.mark=",", scientific=FALSE))) %>%
+  DT::datatable(height = 2000, colnames = c("Date","Calls Booked","Calls Taken",
+                                      "No Shows","Follow Ups", "Closes",
+                                      "Cash", "Revenue"),
+                class= 'stripe compact nowrap',
+                options=list(
+  initComplete = JS(
+        "function(settings, json) {",
+        "$(this.api().table().container()).css({'font-size': '80%'});",
+        "}"))) 
+
+```
+
+
+### Sales Person 1 - Training Into Calls - 2023    
+
+```{css, echo=FALSE}
+.dataTables_scrollBody {
+    height:450px !important;
+    max-height:450px !important;
+}
+
+```
+
+```{r, fig.width=8, fig.height=8}
+rownames(sp1_tra_2023) <- NULL
+
+sp1_tra_2023 %>% 
+   mutate(cash = paste0("$", prettyNum(cash, big.mark=",", scientific=FALSE))) %>%
+  mutate(revenue = paste0("$", prettyNum(revenue, big.mark=",", scientific=FALSE))) %>%
+  DT::datatable(height = 2000, colnames = c("Date","Calls Booked","Calls Taken",
+                                      "No Shows","Follow Ups", "Closes",
+                                      "Cash", "Revenue"),
+                class= 'stripe compact nowrap',
+                options=list(
+  initComplete = JS(
+        "function(settings, json) {",
+        "$(this.api().table().container()).css({'font-size': '80%'});",
+        "}"))) 
+
+```
+
+# Facebook Ads {data-navmenu="Sales Person 1"}
+
+<center><b><font size="8"> Faceboook Ads </font></b></center> 
+
+### Calls Booked 
+
+```{r, fig.width=16, fig.height=5, echo = FALSE, results=FALSE}
+add_column(read_excel("kpi.xlsx", sheet = "March 2022", range = "Z44:AD44"), 0, .after=3)
+
+sp1_fb_2022 <- as.data.frame(
+  cbind(
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "January 2022", range = "Z44:AB44"))),1,3)),
+  0,
+  gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "January 2022", range = "AC44:AD44"))),1,3)),
+  substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "January 2022", range = "AE44:AF44"))),1,5)),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "February 2022", range = "Z44:AB44"))),1,3)),
+  0,
+  gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "February 2022", range = "AC44:AD44"))),1,3)),
+  substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "February 2022", range = "AE44:AF44"))),1,5)),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "March 2022", range = "AH44:AM44"))),1,3)),
+                substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "March 2022", range = "AN44:AO44"))),1,1)),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "April 2022", range = "AH44:AM44"))),1,3)),
+  gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "April 2022", range = "AN44:AO44"))),1,5))),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "May 2022", range = "AD44:AI44"))),1,2)),
+  gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "May 2022", range = "AJ44:AK44"))),1,5))),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "June 2022", range = "AD44:AI44"))),1,1)),
+                substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "June 2022", range = "AJ44:AK44"))),1,5)),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "July 2022", range = "AD44:AI44"))),1,4)),
+                substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "July 2022", range = "AJ44:AK44"))),1,4)),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "August 2022", range = "AD44:AI44"))),1,4)),
+  gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "August 2022", range = "AJ44:AK44"))),1,5))),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "September 2022", range = "AD44:AI44"))),1,2)),
+                substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "September 2022", range = "AJ44:AK44"))),1,1)),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "October 2022", range = "AD44:AI44"))),1,3)),
+  gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "October 2022", range = "AJ44:AK44"))),1,5))),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "November 2022", range = "AD44:AI44"))),1,3)),
+  gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "November 2022", range = "AJ44:AK44"))),1,1))),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "December 2022", range = "AD44:AI44"))),1,3)),
+  gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "December 2022", range = "AJ44:AK44"))),1,5)))
+))
+
+sp1_fb_2022 <- sp1_fb_2022 %>%
+  mutate_all(as.numeric)
+
+sp1_fb_2022 <- as.data.frame(t(sp1_fb_2022))
+
+sp1_fb_2022 <- cbind(my(c("01-2022","02-2022","03-2022","04-2022",
+                           "05-2022","06-2022","07-2022","08-2022",
+                           "09-2022","10-2022","11-2022","12-2022")), sp1_fb_2022)      
+
+colnames(sp1_fb_2022) <- c("Date", "Calls Booked", "Calls Taken", "No Shows", "Offers","Follow Ups","Closes","Cash", "Revenue")
+sp1_fb_2022 <-  sp1_fb_2022 %>% clean_names()
+
+sp1_fb_2022[is.na(sp1_fb_2022)] <- 0 
+
+# Sales Person 1 - Facebook Calls - Jan 2023 - Dec 2023 ------------------------------------------------------------------------
+sp1_fb_2023 <- as.data.frame(
+  cbind(
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "January 2023", 
+                                                       range = "AD44:AI44"))),1,3)),
+      gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "January 2023", 
+                                                       range = "AJ44:AK44"))),1,5))),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "February 2023", 
+                                                       range = "AD44:AI44"))),1,3)),
+          gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "February 2023", 
+                                                       range = "AJ44:AK44"))),1,3))),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "March 2023", range = "AD44:AI44"))),1,3)),
+                    substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "March 2023", range = "AJ44:AK44"))),1,1)),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "April 2023", range = "Y44:AD44"))),1,3)),
+      gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "April 2023", range = "AE44:AF44"))),1,1))),
+    c(0),
+    c(0),
+    c(0),
+    c(0),
+    c(0),
+    c(0),
+    c(0),
+    c(0)
+  ))
+
+
+
+sp1_fb_2023 <- sp1_fb_2023 %>%
+  mutate_all(as.numeric)
+
+sp1_fb_2023 <- as.data.frame(t(sp1_fb_2023))
+
+sp1_fb_2023 <- cbind(my(c("01-2023","02-2023","03-2023","04-2023",
+                           "05-2023","06-2023","07-2023","08-2023",
+                           "09-2023","10-2023", "11-2023", "12-2023")), sp1_fb_2023)      
+
+
+colnames(sp1_fb_2023) <- c("Date", "Calls Booked", "Calls Taken", "No Shows", "Offers", "Follow Ups", "Closes", "Cash", "Revenue")
+sp1_fb_2023 <-  sp1_fb_2023 %>% clean_names()
+
+sp1_fb_2022[is.na(sp1_fb_2022)] <- 0 
+
+fa <- ggplot(sp1_fb_2022, aes(x=date, y=calls_booked)) +
+  geom_bar(stat="identity", fill="#0A4D68") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Calls Booked", title="2022") +
+  geom_text(aes(label = round(calls_booked,0)), color = "white", size = 2.5, vjust=2) +
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,120)
+
+fb <- ggplot(sp1_fb_2023, aes(x=date, y=calls_booked)) +
+  geom_bar(stat="identity", fill="#0A4D68") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-31")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = round(calls_booked,0)), color = "white", size = 2.5, vjust=2) +
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,120)
+
+ grid.arrange(fa , fb, nrow=1)
+```
+
+### Calls Taken
+
+```{r, fig.width=16, fig.height=5}
+
+fc <- ggplot(sp1_fb_2022, aes(x=date, y=calls_taken)) +
+  geom_bar(stat="identity", fill="#088395") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  scale_y_continuous(labels=scales::dollar_format()) +
+  labs(x="", y="Calls Taken", title="2022") +
+  geom_text(aes(label = round(calls_taken,0)), color = "white", size = 2.5, vjust=2) +
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,80) 
+
+fd <- ggplot(sp1_fb_2023, aes(x=date, y=calls_taken)) +
+  geom_bar(stat="identity", fill="#088395") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  scale_y_continuous(labels=scales::dollar_format()) +
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-31")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = round(calls_taken,0)), color = "white", size = 2.5, vjust=2) +
+  ylim(0,80) 
+
+ grid.arrange(fc , fd, nrow=1)
+```
+
+### No Shows
+
+```{r, fig.width=16, fig.height=5}
+
+fe <- ggplot(sp1_fb_2022, aes(x=date, y=no_shows)) +
+  geom_bar(stat="identity", fill="#05BFDB") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="No Shows", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(no_shows > 1,paste(round(no_shows,0)),paste(""))), color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,40) 
+
+ff <- ggplot(sp1_fb_2023, aes(x=date, y=no_shows)) +
+  geom_bar(stat="identity", fill="#05BFDB") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(no_shows > 1,paste(round(no_shows,0)),paste(""))), color = "black", size = 2.5, vjust=2) + 
+  ylim(0,40)    
+   
+ grid.arrange(fe , ff, nrow=1)
+```
+
+### Offers
+
+```{r, fig.width=16, fig.height=5}
+
+fee <- ggplot(sp1_fb_2022, aes(x=date, y=offers)) +
+  geom_bar(stat="identity", fill="#05BFDB") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Offers", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(offers > 40,paste(round(offers,0)),paste(""))), color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,2) 
+
+fff <- ggplot(sp1_fb_2023, aes(x=date, y=offers)) +
+  geom_bar(stat="identity", fill="#05BFDB") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(offers > 40,paste(round(offers,0)),paste(""))), color = "black", size = 2.5, vjust=2) +
+  ylim(0,2)    
+   
+ grid.arrange(fee , fff, nrow=1)
+```
+
+### Follow Ups
+
+```{r, fig.width=16, fig.height=5}
+
+fg <- ggplot(sp1_fb_2022, aes(x=date, y=follow_ups)) +
+  geom_bar(stat="identity", fill="#87CBB9") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Follow Ups", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(follow_ups > 0,paste(round(follow_ups,0)),paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,4) 
+
+fh <- ggplot(sp1_fb_2023, aes(x=date, y=follow_ups)) +
+  geom_bar(stat="identity", fill="#87CBB9") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(follow_ups > 0,paste(round(follow_ups,0)),paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  ylim(0,4)    
+   
+ grid.arrange(fg , fh, nrow=1)
+```
+
+### Closes
+
+```{r, fig.width=16, fig.height=5}
+
+ffg <- ggplot(sp1_fb_2022, aes(x=date, y=closes)) +
+  geom_bar(stat="identity", fill="#B9EDDD") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Closes", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(closes > 0,paste(round(closes,0)),paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,15) 
+
+ffh <- ggplot(sp1_fb_2023, aes(x=date, y=closes)) +
+  geom_bar(stat="identity", fill="#B9EDDD") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(closes > 0,paste(round(closes,0)),paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  ylim(0,15)    
+   
+ grid.arrange(ffg , ffh, nrow=1)
+```
+
+### Cash
+
+```{r, fig.width=16, fig.height=5}
+
+fi <- ggplot(sp1_fb_2022, aes(x=date, y=cash)) +
+  geom_bar(stat="identity", fill="#3EB489") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Cash", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+    geom_text(aes(label = if_else(cash > 900,
+                                paste("$",
+                                      prettyNum(paste(round(cash,0)),
+                                      big.mark=",",scientific=FALSE)),
+                                paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  scale_y_continuous(labels=scales::dollar_format(), limits = c(0,16000))
+
+fj <- ggplot(sp1_fb_2023, aes(x=date, y=cash)) +
+  geom_bar(stat="identity", fill="#3EB489") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(cash > 900,
+                                paste("$",
+                                      prettyNum(paste(round(cash,0)),
+                                      big.mark=",",scientific=FALSE)),
+                                paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  scale_y_continuous(labels=scales::dollar_format(), limits = c(0,16000))  
+   
+ grid.arrange(fi, fj, nrow=1)
+```
+
+### Revenue
+
+```{r, fig.width=16, fig.height=5}
+
+fk <- ggplot(sp1_fb_2022, aes(x=date, y=revenue)) +
+  geom_bar(stat="identity", fill="#3EB489") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Revenue", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+    geom_text(aes(label = if_else(revenue > 900,
+                                paste("$",
+                                      prettyNum(paste(round(revenue,0)),
+                                      big.mark=",",scientific=FALSE)),
+                                paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  scale_y_continuous(labels=scales::dollar_format(), limits = c(0,25000))
+
+fl <- ggplot(sp1_fb_2023, aes(x=date, y=revenue)) +
+  geom_bar(stat="identity", fill="#3EB489") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(revenue > 900,
+                                paste("$",
+                                      prettyNum(paste(round(revenue,0)),
+                                      big.mark=",",scientific=FALSE)),
+                                paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  scale_y_continuous(labels=scales::dollar_format(), limits = c(0,25000))  
+   
+ grid.arrange(fk, fl, nrow=1)
+```
+
+### Sales Person 1 - Facebook Ads - 2022    
+
+```{css, echo=FALSE}
+.dataTables_scrollBody {
+    height:450px !important;
+    max-height:450px !important;
+}
+
+```
+
+```{r, fig.width=8, fig.height=8}
+rownames(sp1_fb_2022) <- NULL
+
+sp1_fb_2022 %>% 
+   mutate(cash = paste0("$", prettyNum(cash, big.mark=",", scientific=FALSE))) %>%
+  mutate(revenue = paste0("$", prettyNum(revenue, big.mark=",", scientific=FALSE))) %>%
+  DT::datatable(height = 2000, colnames = c("Date","Calls Booked","Calls Taken",
+                                      "No Shows","Offers","Follow Ups", "Closes",
+                                      "Cash", "Revenue"),
+                class= 'stripe compact nowrap',
+                options=list(
+  initComplete = JS(
+        "function(settings, json) {",
+        "$(this.api().table().container()).css({'font-size': '80%'});",
+        "}"))) 
+
+```
+
+### Sales Person 1 - Faceook Ads - 2023  
+
+```{css, echo=FALSE}
+.dataTables_scrollBody {
+    height:450px !important;
+    max-height:450px !important;
+}
+
+```
+
+```{r, fig.width=8, fig.height=8}
+rownames(sp1_fb_2023) <- NULL
+
+sp1_fb_2023 %>% 
+   mutate(cash = paste0("$", prettyNum(cash, big.mark=",", scientific=FALSE))) %>%
+  mutate(revenue = paste0("$", prettyNum(revenue, big.mark=",", scientific=FALSE))) %>%
+  DT::datatable(height = 2000, colnames = c("Date","Calls Booked","Calls Taken",
+                                      "No Shows","Offers","Follow Ups", "Closes",
+                                      "Cash", "Revenue"),
+                class= 'stripe compact nowrap',
+                options=list(
+  initComplete = JS(
+        "function(settings, json) {",
+        "$(this.api().table().container()).css({'font-size': '80%'});",
+        "}"))) 
+
+```
+
+
+# Website Calls {data-navmenu="Sales Person 1"}
+
+<center><b><font size="8">Website Calls </font></b></center> 
+
+### Calls Booked 
+
+```{r, fig.width=16, fig.height=5, echo = FALSE, results=FALSE}
+
+sp1_web_2022 <- as.data.frame(
+  cbind(
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "January 2022", range = "AH44:AM44"))),1,3)),
+                substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "January 2022", range = "AN44:AO44"))),1,5)),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "February 2022", range = "AH44:AM44"))),1,3)),
+                substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "February 2022", range = "AN44:AO44"))),1,5)),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "March 2022", range = "AQ44:AV44"))),1,3)),
+                substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "March 2022", range = "AW44:AX44"))),1,5)),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "April 2022", range = "AQ44:AV44"))),1,3)),
+                substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "April 2022", range = "AW44:AX44"))),1,5)),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "May 2022", range = "AM44:AR44"))),1,2)),
+                substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "May 2022", range = "AS44:AT44"))),1,5)),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "June 2022", range = "AM44:AR44"))),1,1)),
+                substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "June 2022", range = "AS44:AT44"))),1,1)),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "July 2022", range = "AM44:AR44"))),1,4)),
+                substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "July 2022", range = "AS44:AT44"))),1,4)),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "August 2022", range = "AM44:AR44"))),1,4)),
+                substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "August 2022", range = "AS44:AT44"))),1,5)),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "September 2022", range = "AM44:AR44"))),1,2)),
+  gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "September 2022", range = "AS44:AT44"))),1,2))),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "October 2022", range = "AM44:AR44"))),1,3)),
+  gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "October 2022", range = "AS44:AT44"))),1,5))),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "November 2022", range = "AM44:AR44"))),1,3)),
+  gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "November 2022", range = "AS44:AT44"))),1,5))),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "December 2022", range = "AM44:AR44"))),1,3)),
+  gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "December 2022", range = "AS44:AT44"))),1,5)))
+))
+
+sp1_web_2022 <- sp1_web_2022 %>%
+  mutate_all(as.numeric)
+
+sp1_web_2022 <- as.data.frame(t(sp1_web_2022))
+
+sp1_web_2022 <- cbind(my(c("01-2022","02-2022","03-2022","04-2022",
+                           "05-2022","06-2022","07-2022","08-2022",
+                           "09-2022","10-2022","11-2022","12-2022")), sp1_web_2022)      
+
+colnames(sp1_web_2022) <- c("Date", "Calls Booked", "Calls Taken", "No Shows", "Offers", "Follow Ups", 
+                            "Closes", "Cash", "Revenue")
+sp1_web_2022 <-  sp1_web_2022 %>% clean_names()
+
+sp1_web_2022[is.na(sp1_web_2022)] <- 0 
+
+#--------------------------------------------------------------
+
+sp1_web_2023 <- as.data.frame(
+  cbind(
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "January 2023", 
+                                                       range = "AM44:AR44"))),1,3)),
+                    substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "January 2023", 
+                                                       range ="AS44:AT44"))),1,5)),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "February 2023", 
+                                                       range = "AM44:AR44"))),1,3)),
+                    substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "February 2023", 
+                                                       range = "AS44:AT44"))),1,5)),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "March 2023", range = "AM44:AR44"))),1,3)),
+                    substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "March 2023", range = "AS44:AT44"))),1,5)),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "April 2023", range = "AH44:AM44"))),1,3)),
+                    substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "April 2023", range = "AN44:AO44"))),1,5)),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "May 2023", range = "Y44:AD44"))),1,2)),
+      gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "May 2023", range = "AE44:AF44"))),1,5))),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "June 2023", range = "Y44:AD44"))),1,3)),
+      gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "June 2023", range = "AE44:AF44"))),1,5))),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "July 2023", range = "Y44:AD44"))),1,2)),
+      gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "July 2023", range = "AE44:AF44"))),1,4))),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "August 2023", range = "Y44:AD44"))),1,3)),
+                    substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "August 2023", range = "AE44:AF44"))),1,1)),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "September 2023", 
+                                                       range = "Y44:AD44"))),1,3)),
+                    substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "September 2023", 
+                                                       range = "AE44:AF44"))),1,1)),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "October 2023", range = "Y44:AD44"))),1,3)),
+      gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "October 2023", range = "AE44:AF44"))),1,2))
+  )))
+
+
+sp1_web_2023 <- sp1_web_2023 %>%
+  mutate_all(as.numeric)
+
+sp1_web_2023 <- as.data.frame(t(sp1_web_2023))
+
+sp1_web_2023 <- cbind(my(c("01-2023","02-2023","03-2023","04-2023",
+                           "05-2023","06-2023","07-2023","08-2023",
+                           "09-2023","10-2023")), sp1_web_2023)      
+
+
+colnames(sp1_web_2023) <- c("Date", "Calls Booked", "Calls Taken", "No Shows", 
+                            "Offers", "Follow Ups", "Closes", "Cash", "Revenue")
+sp1_web_2023 <-  sp1_web_2023 %>% clean_names()
+
+sp1_web_2022[is.na(sp1_web_2022)] <- 0 
+
+bm <- ggplot(sp1_web_2022, aes(x=date, y=calls_booked)) +
+  geom_bar(stat="identity", fill="#0A4D68") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Calls Booked", title="2022") +
+  geom_text(aes(label = round(calls_booked,0)), color = "white", size = 2.5, vjust=2) +
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,60)
+
+bn <- ggplot(sp1_web_2023, aes(x=date, y=calls_booked)) +
+  geom_bar(stat="identity", fill="#0A4D68") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-31")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = round(calls_booked,0)), color = "white", size = 2.5, vjust=2) +
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,60)
+
+ grid.arrange(bm , bn, nrow=1)
+
+
+```
+
+### Calls Taken
+
+```{r, fig.width=16, fig.height=5}
+bo <- ggplot(sp1_web_2022, aes(x=date, y=calls_taken)) +
+  geom_bar(stat="identity", fill="#088395") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Calls Taken", title="2022") +
+  geom_text(aes(label = round(calls_taken,0)), color = "white", size = 2.5, vjust=2) +
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,40) 
+
+bp <- ggplot(sp1_web_2023, aes(x=date, y=calls_taken)) +
+  geom_bar(stat="identity", fill="#088395") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-31")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = round(calls_taken,0)), color = "white", size = 2.5, vjust=2) +
+  ylim(0,40) 
+
+ grid.arrange(bo , bp, nrow=1)
+```
+
+### No Shows
+
+```{r, fig.width=16, fig.height=5}
+
+bq <- ggplot(sp1_web_2022, aes(x=date, y=no_shows)) +
+  geom_bar(stat="identity", fill="#05BFDB") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="No Shows", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(no_shows > 1,paste(round(no_shows,0)),paste(""))), color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,30) 
+
+br <- ggplot(sp1_web_2023, aes(x=date, y=no_shows)) +
+  geom_bar(stat="identity", fill="#05BFDB") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(no_shows > 1,paste(round(no_shows,0)),paste(""))), color = "black", size = 2.5, vjust=2) + 
+  ylim(0,30)    
+   
+ grid.arrange(bq , br, nrow=1)
+```
+
+### Offers
+
+```{r, fig.width=16, fig.height=5}
+
+bqq <- ggplot(sp1_web_2022, aes(x=date, y=offers)) +
+  geom_bar(stat="identity", fill="#6DD19C") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Offers", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(offers > 1,paste(round(offers,0)),paste(""))), color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,8) 
+
+brr <- ggplot(sp1_web_2023, aes(x=date, y=offers)) +
+  geom_bar(stat="identity", fill="#6DD19C") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(offers > 3,paste(round(offers,0)),paste(""))), color = "black", size = 2.5, vjust=2) + 
+  ylim(0,8)    
+   
+ grid.arrange(bqq , brr, nrow=1)
+```
+
+
+### Follow Ups
+
+```{r, fig.width=16, fig.height=5}
+
+bs <- ggplot(sp1_web_2022, aes(x=date, y=follow_ups)) +
+  geom_bar(stat="identity", fill="#87CBB9") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Follow Ups", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(follow_ups > 1,paste(round(follow_ups,0)),paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,15) 
+
+bt <- ggplot(sp1_web_2023, aes(x=date, y=follow_ups)) +
+  geom_bar(stat="identity", fill="#87CBB9") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(follow_ups > 1,paste(round(follow_ups,0)),paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  ylim(0,15)    
+   
+ grid.arrange(bs , bt, nrow=1)
+```
+
+### Closes
+
+```{r, fig.width=16, fig.height=5}
+
+bu <- ggplot(sp1_web_2022, aes(x=date, y=closes)) +
+  geom_bar(stat="identity", fill="#B9EDDD") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Closes", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(closes > 1,paste(round(closes,0)),paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,25) 
+
+bv <- ggplot(sp1_web_2023, aes(x=date, y=closes)) +
+  geom_bar(stat="identity", fill="#B9EDDD") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(closes > 1,paste(round(closes,0)),paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  ylim(0,25)    
+   
+ grid.arrange(bu , bv, nrow=1)
+```
+
+### Cash
+
+```{r, fig.width=16, fig.height=5}
+
+bw <- ggplot(sp1_web_2022, aes(x=date, y=cash)) +
+  geom_bar(stat="identity", fill="#3EB489") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Cash", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+    geom_text(aes(label = if_else(cash > 1500,
+                                paste("$",
+                                      prettyNum(paste(round(cash,0)),
+                                      big.mark=",",scientific=FALSE)),
+                                paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  scale_y_continuous(labels=scales::dollar_format(), limits = c(0,35000))
+
+bx <- ggplot(sp1_web_2023, aes(x=date, y=cash)) +
+  geom_bar(stat="identity", fill="#3EB489") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(cash > 1500,
+                                paste("$",
+                                      prettyNum(paste(round(cash,0)),
+                                      big.mark=",",scientific=FALSE)),
+                                paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  scale_y_continuous(labels=scales::dollar_format(), limits = c(0,35000))  
+   
+ grid.arrange(bw, bx, nrow=1)
+```
+
+### Revenue
+
+```{r, fig.width=16, fig.height=5}
+
+by <- ggplot(sp1_web_2022, aes(x=date, y=revenue)) +
+  geom_bar(stat="identity", fill="#3EB489") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Revenue", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+    geom_text(aes(label = if_else(revenue > 1500,
+                                paste("$",
+                                      prettyNum(paste(round(revenue,0)),
+                                      big.mark=",",scientific=FALSE)),
+                                paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  scale_y_continuous(labels=scales::dollar_format(), limits = c(0,45000))
+
+bz <- ggplot(sp1_web_2023, aes(x=date, y=revenue)) +
+  geom_bar(stat="identity", fill="#3EB489") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(revenue > 1500,
+                                paste("$",
+                                      prettyNum(paste(round(revenue,0)),
+                                      big.mark=",",scientific=FALSE)),
+                                paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  scale_y_continuous(labels=scales::dollar_format(), limits = c(0,45000))  
+   
+ grid.arrange(by, bz, nrow=1)
+```
+
+
+### Sales Person 1 - Website Calls - 2022    
+
+```{css, echo=FALSE}
+.dataTables_scrollBody {
+    height:450px !important;
+    max-height:450px !important;
+}
+
+```
+
+```{r, fig.width=8, fig.height=8}
+rownames(sp1_web_2022) <- NULL
+
+sp1_web_2022 %>% 
+   mutate(cash = paste0("$", prettyNum(cash, big.mark=",", scientific=FALSE))) %>%
+  mutate(revenue = paste0("$", prettyNum(revenue, big.mark=",", scientific=FALSE))) %>%
+  DT::datatable(height = 2000, colnames = c("Date","Calls Booked","Calls Taken",
+                                      "No Shows","Offers","Follow Ups", "Closes",
+                                      "Cash", "Revenue"),
+                class= 'stripe compact nowrap',
+                options=list(
+  initComplete = JS(
+        "function(settings, json) {",
+        "$(this.api().table().container()).css({'font-size': '80%'});",
+        "}"))) 
+
+```
+
+### Sales Person 1 - Website Calls - 2023  
+
+```{css, echo=FALSE}
+.dataTables_scrollBody {
+    height:450px !important;
+    max-height:450px !important;
+}
+
+```
+
+```{r, fig.width=8, fig.height=8}
+rownames(sp1_web_2023) <- NULL
+
+sp1_web_2023 %>% 
+   mutate(cash = paste0("$", prettyNum(cash, big.mark=",", scientific=FALSE))) %>%
+  mutate(revenue = paste0("$", prettyNum(revenue, big.mark=",", scientific=FALSE))) %>%
+  DT::datatable(height = 2000, colnames = c("Date","Calls Booked","Calls Taken",
+                                      "No Shows","Offers", "Follow Ups", "Closes",
+                                      "Cash", "Revenue"),
+                class= 'stripe compact nowrap',
+                options=list(
+  initComplete = JS(
+        "function(settings, json) {",
+        "$(this.api().table().container()).css({'font-size': '80%'});",
+        "}"))) 
+
+```
+
+# Training Intro Calls {data-navmenu="Sales Person 2"}
+
+<center><b><font size="8">  Training Into Calls </font></b></center> 
+
+### Calls Booked 
+
+```{r, fig.width=16, fig.height=5, echo = FALSE, results=FALSE}
+sp2_tra_2022 <- as.data.frame(
+  cbind(
+c(0),
+c(0),
+c(0),
+c(0),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "May 2022", range = "AZ44:BD44"))),1,2)),
+  gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "May 2022", range = "BE44:BF44"))),1,5))),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "June 2022", range = "AZ44:BD44"))),1,3)),
+                substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "June 2022", range = "BE44:BF44"))),1,5)),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "July 2022", range = "AZ44:BD44"))),1,4)),
+                substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "July 2022", range = "BE44:BF44"))),1,5)),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "August 2022", range = "AZ44:BD44"))),1,4)),
+  gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "August 2022", range = "BE44:BF44"))),1,2))),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "September 2022", range = "AZ44:BD44"))),1,5)),
+                substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "September 2022", range = "BE44:BF44"))),1,5)),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "October 2022", range = "AZ44:BD44"))),1,3)),
+  gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "October 2022", range = "BE44:BF44"))),1,5))),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "November 2022", range = "AZ44:BD44"))),1,3)),
+  gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "November 2022", range = "BE44:BF44"))),1,5))),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "December 2022", range = "AZ44:BD44"))),1,3)),
+  gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "December 2022", range = "BE44:BF44"))),1,5)))
+))
+
+sp2_tra_2022 <- sp2_tra_2022 %>%
+  mutate_all(as.numeric)
+
+sp2_tra_2022 <- as.data.frame(t(sp2_tra_2022))
+
+sp2_tra_2022 <- cbind(my(c("01-2022","02-2022","03-2022","04-2022",
+                           "05-2022","06-2022","07-2022","08-2022",
+                           "09-2022","10-2022","11-2022","12-2022")), sp2_tra_2022)      
+
+colnames(sp2_tra_2022) <- c("Date", "Calls Booked", "Calls Taken", "No Shows", "Follow Ups", "Closes", "Cash", "Revenue")
+
+sp2_tra_2022 <-  sp2_tra_2022 %>% clean_names()
+
+sp2_tra_2022[is.na(sp2_tra_2022)] <- 0 
+
+# Sales Prson 2 - Training into Calls - Jan 2023 - Dec 2023 ------------------------------------------------------------------------
+sp2_tra_2023 <- as.data.frame(
+  cbind(
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "January 2023", 
+                                                       range = "AZ44:BD44"))),1,3)),
+                    substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "January 2023", 
+                                                       range = "BE44:BF44"))),1,5)),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "February 2023", 
+                                                       range = "AZ44:BD44"))),1,3)),
+                    substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "February 2023", 
+                                                       range = "BE44:BF44"))),1,5)),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "March 2023", range = "AZ44:BD44"))),1,3)),
+                    substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "March 2023", range = "BE44:BF44"))),1,5)),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "April 2023", range = "AU44:AY44"))),1,3)),
+                    substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "April 2023", range = "AZ44:BA44"))),1,5)),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "May 2023", range = "AL44:AP44"))),1,2)),
+                    substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "May 2023", range = "AQ44:AR44"))),1,5)),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "June 2023", range = "AL44:AP44"))),1,3)),
+                    substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "June 2023", range = "AQ44:AR44"))),1,5)),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "July 2023", range = "AL44:AP44"))),1,4)),
+                    substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "July 2023", range = "AQ44:AR44"))),1,5)),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "August 2023", range = "AL44:AP44"))),1,3)),
+                    substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "August 2023", range = "AQ44:AR44"))),1,5)),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "September 2023", 
+                                                       range = "AL44:AP44"))),1,3)),
+                    substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "September 2023", 
+                                                       range = "AQ44:AR44"))),1,5)),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "October 2023", 
+                                                       range = "AL44:AP44"))),1,3)),
+      gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "October 2023", range = "AQ44:AR44"))),1,5))),
+  c(0),
+  c(0)
+  ))
+
+# Converting columns to numeric
+sp2_tra_2023 <- sp2_tra_2023 %>%
+  mutate_all(as.numeric)
+
+# Transposing data frame
+sp2_tra_2023 <- as.data.frame(t(sp2_tra_2023))
+
+# Adding date column
+sp2_tra_2023 <- cbind(my(c("01-2023","02-2023","03-2023","04-2023",
+                           "05-2023","06-2023","07-2023","08-2023",
+                           "09-2023","10-2023","11-2023","12-2023")), sp2_tra_2023)      
+
+# Assigning column names
+colnames(sp2_tra_2023) <- c("Date", "Calls Booked", "Calls Taken", "No Shows", "Follow Ups", "Closes", "Cash", "Revenue")
+
+# Changing column names. 
+sp2_tra_2023 <-  sp2_tra_2023 %>% clean_names()
+
+# Converting NA to Zero
+sp2_tra_2022[is.na(sp2_tra_2022)] <- 0 
+
+# Charts
+ca <- ggplot(sp2_tra_2022, aes(x=date, y=calls_booked)) +
+  geom_bar(stat="identity", fill="#0A4D68") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Calls Booked", title="2022") +
+  geom_text(aes(label = round(calls_booked,0)), color = "white", size = 2.5, vjust=2) +
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,55)
+
+cb <- ggplot(sp2_tra_2023, aes(x=date, y=calls_booked)) +
+  geom_bar(stat="identity", fill="#0A4D68") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-31")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = round(calls_booked,0)), color = "white", size = 2.5, vjust=2) +
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,55)
+
+ grid.arrange(ca , cb, nrow=1)
+```
+
+### Calls Taken
+
+```{r, fig.width=16, fig.height=5}
+
+cc <- ggplot(sp2_tra_2022, aes(x=date, y=calls_taken)) +
+  geom_bar(stat="identity", fill="#088395") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  scale_y_continuous(labels=scales::dollar_format()) +
+  labs(x="", y="Calls Taken", title="2022") +
+  geom_text(aes(label = round(calls_taken,0)), color = "white", size = 2.5, vjust=2) +
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,50) 
+
+cd <- ggplot(sp2_tra_2023, aes(x=date, y=calls_taken)) +
+  geom_bar(stat="identity", fill="#088395") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  scale_y_continuous(labels=scales::dollar_format()) +
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-31")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = round(calls_taken,0)), color = "white", size = 2.5, vjust=2) +
+  ylim(0,50) 
+
+ grid.arrange(cc , cd, nrow=1)
+```
+
+### No Shows
+
+```{r, fig.width=16, fig.height=5}
+
+ce <- ggplot(sp2_tra_2022, aes(x=date, y=no_shows)) +
+  geom_bar(stat="identity", fill="#05BFDB") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="No Shows", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(no_shows > 0,paste(round(no_shows,0)),paste(""))), color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,8) 
+
+cf <- ggplot(sp2_tra_2023, aes(x=date, y=no_shows)) +
+  geom_bar(stat="identity", fill="#05BFDB") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(no_shows > 0,paste(round(no_shows,0)),paste(""))), color = "black", 
+            size = 2.5,    vjust=2) + 
+  ylim(0,8)    
+   
+ grid.arrange(ce , cf, nrow=1)
+```
+
+### Follow Ups
+
+```{r, fig.width=16, fig.height=5}
+
+cg <- ggplot(sp2_tra_2022, aes(x=date, y=follow_ups)) +
+  geom_bar(stat="identity", fill="#87CBB9") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Follow Ups", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(follow_ups > 2,paste(round(follow_ups,0)),paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,60) 
+
+ch <- ggplot(sp2_tra_2023, aes(x=date, y=follow_ups)) +
+  geom_bar(stat="identity", fill="#87CBB9") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(follow_ups > 2,paste(round(follow_ups,0)),paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  ylim(0,60)    
+   
+ grid.arrange(cg , ch, nrow=1)
+```
+
+### Closes
+
+```{r, fig.width=16, fig.height=5}
+
+ccg <- ggplot(sp2_tra_2022, aes(x=date, y=closes)) +
+  geom_bar(stat="identity", fill="#B9EDDD") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Closes", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(closes > 1,paste(round(closes,0)),paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,20) 
+
+cch <- ggplot(sp2_tra_2023, aes(x=date, y=closes)) +
+  geom_bar(stat="identity", fill="#B9EDDD") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(closes > 1,paste(round(closes,0)),paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  ylim(0,20)    
+   
+ grid.arrange(ccg , cch, nrow=1)
+```
+
+### Cash
+
+```{r, fig.width=16, fig.height=5}
+ci <- ggplot(sp2_tra_2022, aes(x=date, y=cash)) +
+  geom_bar(stat="identity", fill="#3EB489") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Cash", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+    geom_text(aes(label = if_else(cash > 900,
+                                paste("$",
+                                      prettyNum(paste(round(cash,0)),
+                                      big.mark=",",scientific=FALSE)),
+                                paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  scale_y_continuous(labels=scales::dollar_format(), limits = c(0,50000))
+
+cj <- ggplot(sp2_tra_2023, aes(x=date, y=cash)) +
+  geom_bar(stat="identity", fill="#3EB489") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(cash > 900,
+                                paste("$",
+                                      prettyNum(paste(round(cash,0)),
+                                      big.mark=",",scientific=FALSE)),
+                                paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  scale_y_continuous(labels=scales::dollar_format(), limits = c(0,50000))  
+   
+ grid.arrange(ci, cj, nrow=1)
+```
+
+### Revenue
+
+```{r, fig.width=16, fig.height=5}
+ck <- ggplot(sp2_tra_2022, aes(x=date, y=revenue)) +
+  geom_bar(stat="identity", fill="#3EB489") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Revenue", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+    geom_text(aes(label = if_else(revenue > 900,
+                                paste("$",
+                                      prettyNum(paste(round(revenue,0)),
+                                      big.mark=",",scientific=FALSE)),
+                                paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  scale_y_continuous(labels=scales::dollar_format(), limits = c(0,50000))
+
+cl <- ggplot(sp2_tra_2023, aes(x=date, y=revenue)) +
+  geom_bar(stat="identity", fill="#3EB489") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(revenue > 900,
+                                paste("$",
+                                      prettyNum(paste(round(revenue,0)),
+                                      big.mark=",",scientific=FALSE)),
+                                paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  scale_y_continuous(labels=scales::dollar_format(), limits = c(0,50000))  
+   
+ grid.arrange(ck, cl, nrow=1)
+```
+
+
+### Sales Person 2 - Training Into Calls - 2022    
+
+```{css, echo=FALSE}
+.dataTables_scrollBody {
+    height:450px !important;
+    max-height:450px !important;
+}
+
+```
+
+```{r, fig.width=8, fig.height=8}
+rownames(sp2_tra_2022) <- NULL
+
+sp2_tra_2022 %>% 
+   mutate(cash = paste0("$", prettyNum(cash, big.mark=",", scientific=FALSE))) %>%
+  mutate(revenue = paste0("$", prettyNum(revenue, big.mark=",", scientific=FALSE))) %>%
+  DT::datatable(height = 2000, colnames = c("Date","Calls Booked","Calls Taken",
+                                      "No Shows","Follow Ups", "Closes",
+                                      "Cash", "Revenue"),
+                class= 'stripe compact nowrap',
+                options=list(
+  initComplete = JS(
+        "function(settings, json) {",
+        "$(this.api().table().container()).css({'font-size': '80%'});",
+        "}"))) 
+
+```
+
+### Sales Person 2 - Training Into Calls - 2023  
+
+```{css, echo=FALSE}
+.dataTables_scrollBody {
+    height:450px !important;
+    max-height:450px !important;
+}
+
+```
+
+```{r, fig.width=8, fig.height=8}
+rownames(sp2_tra_2023) <- NULL
+
+sp2_tra_2023 %>% 
+   mutate(cash = paste0("$", prettyNum(cash, big.mark=",", scientific=FALSE))) %>%
+  mutate(revenue = paste0("$", prettyNum(revenue, big.mark=",", scientific=FALSE))) %>%
+  DT::datatable(height = 2000, colnames = c("Date","Calls Booked","Calls Taken",
+                                      "No Shows","Follow Ups", "Closes",
+                                      "Cash", "Revenue"),
+                class= 'stripe compact nowrap',
+                options=list(
+  initComplete = JS(
+        "function(settings, json) {",
+        "$(this.api().table().container()).css({'font-size': '80%'});",
+        "}"))) 
+
+```
+
+
+
+
+
+
+# Facebook Ads {data-navmenu="Sales Person 2"}
+
+<center><b><font size="8"> Faceboook Ads </font></b></center> 
+
+### Calls Booked 
+
+```{r, fig.width=16, fig.height=5, echo = FALSE, results=FALSE}
+
+sp2_fb_2022 <- as.data.frame(
+  cbind(
+    c(0),
+    c(0),
+    c(0),
+    c(0),
+    c(0),
+    c(0),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "July 2022", range = "BH44:BM44"))),1,4)),
+  gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "July 2022", range = "BN44:BO44"))),1,2))),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "August 2022", range = "BH44:BM44"))),1,1)),
+  gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "August 2022", range = "BN44:BO44"))),1,1))),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "September 2022", range = "BH44:BM44"))),1,2)),
+                substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "September 2022", range = "BN44:BO44"))),1,1)),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "October 2022", range = "BH44:BM44"))),1,1)),
+  gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "October 2022", range = "BN44:BO44"))),1,1))),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "November 2022", range = "BH44:BM44"))),1,3)),
+  gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "November 2022", range = "BN44:BO44"))),1,1))),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "December 2022", range = "BH44:BM44"))),1,3)),
+  gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "December 2022", range = "BN44:BO44"))),1,5)))
+))
+
+sp2_fb_2022 <- sp2_fb_2022 %>%
+  mutate_all(as.numeric)
+
+sp2_fb_2022 <- as.data.frame(t(sp2_fb_2022))
+
+sp2_fb_2022 <- cbind(my(c("01-2022","02-2022","03-2022","04-2022",
+                           "05-2022","06-2022","07-2022","08-2022",
+                           "09-2022","10-2022","11-2022","12-2022")), sp2_fb_2022)      
+
+colnames(sp2_fb_2022) <- c("Date", "Calls Booked", "Calls Taken", "No Shows", "Offers","Follow Ups","Closes","Cash", "Revenue")
+sp2_fb_2022 <-  sp2_fb_2022 %>% clean_names()
+
+sp2_fb_2022[is.na(sp2_fb_2022)] <- 0 
+
+# Sales Person 1 - Facebook Calls - Jan 2023 - Dec 2023 ------------------------------------------------------------------------
+sp2_fb_2023 <- as.data.frame(
+  cbind(
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "January 2023", 
+                                                       range = "BH44:BM44"))),1,1)),
+      gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "January 2023", 
+                                                       range = "BN44:BO44"))),1,1))),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "February 2023", 
+                                                       range = "BH44:BM44"))),1,3)),
+          gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "February 2023", 
+                                                       range = "BN44:BO44"))),1,5))),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "March 2023", range = "BH44:BM44"))),1,3)),
+                    substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "March 2023", range = "BN44:BO44"))),1,5)),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "April 2023", range = "BC44:BH44"))),1,3)),
+      gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "April 2023", range = "BI44:BJ44"))),1,5))),
+    c(0),
+    c(0),
+    c(0),
+    c(0),
+    c(0),
+    c(0),
+    c(0),
+    c(0)
+  ))
+
+
+
+sp2_fb_2023 <- sp2_fb_2023 %>%
+  mutate_all(as.numeric)
+
+sp2_fb_2023 <- as.data.frame(t(sp2_fb_2023))
+
+sp2_fb_2023 <- cbind(my(c("01-2023","02-2023","03-2023","04-2023",
+                           "05-2023","06-2023","07-2023","08-2023",
+                           "09-2023","10-2023", "11-2023", "12-2023")), sp2_fb_2023)      
+
+
+colnames(sp2_fb_2023) <- c("Date", "Calls Booked", "Calls Taken", "No Shows", "Offers", "Follow Ups", "Closes", "Cash", "Revenue")
+sp2_fb_2023 <-  sp2_fb_2023 %>% clean_names()
+
+sp2_fb_2022[is.na(sp2_fb_2022)] <- 0 
+
+ga <- ggplot(sp2_fb_2022, aes(x=date, y=calls_booked)) +
+  geom_bar(stat="identity", fill="#0A4D68") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Calls Booked", title="2022") +
+  geom_text(aes(label = round(calls_booked,0)), color = "white", size = 2.5, vjust=2) +
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,8)
+
+gb <- ggplot(sp2_fb_2023, aes(x=date, y=calls_booked)) +
+  geom_bar(stat="identity", fill="#0A4D68") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-31")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = round(calls_booked,0)), color = "white", size = 2.5, vjust=2) +
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,8)
+
+ grid.arrange(ga , gb, nrow=1)
+```
+
+### Calls Taken
+
+```{r, fig.width=16, fig.height=5}
+
+gc <- ggplot(sp2_fb_2022, aes(x=date, y=calls_taken)) +
+  geom_bar(stat="identity", fill="#088395") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  scale_y_continuous(labels=scales::dollar_format()) +
+  labs(x="", y="Calls Taken", title="2022") +
+  geom_text(aes(label = round(calls_taken,0)), color = "white", size = 2.5, vjust=2) +
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,8) 
+
+gd <- ggplot(sp2_fb_2023, aes(x=date, y=calls_taken)) +
+  geom_bar(stat="identity", fill="#088395") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  scale_y_continuous(labels=scales::dollar_format()) +
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-31")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = round(calls_taken,0)), color = "white", size = 2.5, vjust=2) +
+  ylim(0,8) 
+
+ grid.arrange(gc , gd, nrow=1)
+```
+
+### No Shows
+
+```{r, fig.width=16, fig.height=5}
+
+ge <- ggplot(sp2_fb_2022, aes(x=date, y=no_shows)) +
+  geom_bar(stat="identity", fill="#05BFDB") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="No Shows", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(no_shows > 1,paste(round(no_shows,0)),paste(""))), color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,4) 
+
+gf <- ggplot(sp2_fb_2023, aes(x=date, y=no_shows)) +
+  geom_bar(stat="identity", fill="#05BFDB") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(no_shows > 1,paste(round(no_shows,0)),paste(""))), color = "black", size = 2.5, vjust=2) + 
+  ylim(0,4)    
+   
+ grid.arrange(ge , gf, nrow=1)
+```
+
+### Offers
+
+```{r, fig.width=16, fig.height=5}
+
+feg <- ggplot(sp2_fb_2022, aes(x=date, y=offers)) +
+  geom_bar(stat="identity", fill="#05BFDB") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Offers", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(offers > 1,paste(round(offers,0)),paste(""))), color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,8) 
+
+ffg <- ggplot(sp2_fb_2023, aes(x=date, y=offers)) +
+  geom_bar(stat="identity", fill="#05BFDB") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(offers > 1,paste(round(offers,0)),paste(""))), color = "black", size = 2.5, vjust=2) +
+  ylim(0,8)    
+   
+ grid.arrange(feg , ffg, nrow=1)
+```
+
+### Follow Ups
+
+```{r, fig.width=16, fig.height=5}
+
+gg <- ggplot(sp2_fb_2022, aes(x=date, y=follow_ups)) +
+  geom_bar(stat="identity", fill="#87CBB9") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Follow Ups", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(follow_ups > 0,paste(round(follow_ups,0)),paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,4) 
+
+gh <- ggplot(sp2_fb_2023, aes(x=date, y=follow_ups)) +
+  geom_bar(stat="identity", fill="#87CBB9") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(follow_ups > 0,paste(round(follow_ups,0)),paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  ylim(0,4)    
+   
+ grid.arrange(gg , gh, nrow=1)
+```
+
+### Closes
+
+```{r, fig.width=16, fig.height=5}
+
+ffg1 <- ggplot(sp2_fb_2022, aes(x=date, y=closes)) +
+  geom_bar(stat="identity", fill="#B9EDDD") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Closes", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(closes > 0,paste(round(closes,0)),paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,8) 
+
+ffh1 <- ggplot(sp2_fb_2023, aes(x=date, y=closes)) +
+  geom_bar(stat="identity", fill="#B9EDDD") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(closes > 0,paste(round(closes,0)),paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  ylim(0,8)    
+   
+ grid.arrange(ffg1 , ffh1, nrow=1)
+```
+
+### Cash
+
+```{r, fig.width=16, fig.height=5}
+
+gi <- ggplot(sp2_fb_2022, aes(x=date, y=cash)) +
+  geom_bar(stat="identity", fill="#3EB489") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Cash", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+    geom_text(aes(label = if_else(cash > 900,
+                                paste("$",
+                                      prettyNum(paste(round(cash,0)),
+                                      big.mark=",",scientific=FALSE)),
+                                paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  scale_y_continuous(labels=scales::dollar_format(), limits = c(0,20000))
+
+gj <- ggplot(sp2_fb_2023, aes(x=date, y=cash)) +
+  geom_bar(stat="identity", fill="#3EB489") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(cash > 900,
+                                paste("$",
+                                      prettyNum(paste(round(cash,0)),
+                                      big.mark=",",scientific=FALSE)),
+                                paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  scale_y_continuous(labels=scales::dollar_format(), limits = c(0,20000))  
+   
+ grid.arrange(gi, gj, nrow=1)
+```
+
+### Revenue
+
+```{r, fig.width=16, fig.height=5}
+
+gk <- ggplot(sp2_fb_2022, aes(x=date, y=revenue)) +
+  geom_bar(stat="identity", fill="#3EB489") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Revenue", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+    geom_text(aes(label = if_else(revenue > 900,
+                                paste("$",
+                                      prettyNum(paste(round(revenue,0)),
+                                      big.mark=",",scientific=FALSE)),
+                                paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  scale_y_continuous(labels=scales::dollar_format(), limits = c(0,26000))
+
+gl <- ggplot(sp2_fb_2023, aes(x=date, y=revenue)) +
+  geom_bar(stat="identity", fill="#3EB489") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(revenue > 900,
+                                paste("$",
+                                      prettyNum(paste(round(revenue,0)),
+                                      big.mark=",",scientific=FALSE)),
+                                paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  scale_y_continuous(labels=scales::dollar_format(), limits = c(0,26000))  
+   
+ grid.arrange(gk, gl, nrow=1)
+```
+
+### Sales Person 2 - Facebook Ads - 2022    
+
+```{css, echo=FALSE}
+.dataTables_scrollBody {
+    height:450px !important;
+    max-height:450px !important;
+}
+
+```
+
+```{r, fig.width=8, fig.height=8}
+rownames(sp2_fb_2022) <- NULL
+
+sp2_fb_2022 %>% 
+   mutate(cash = paste0("$", prettyNum(cash, big.mark=",", scientific=FALSE))) %>%
+  mutate(revenue = paste0("$", prettyNum(revenue, big.mark=",", scientific=FALSE))) %>%
+  DT::datatable(height = 2000, colnames = c("Date","Calls Booked","Calls Taken",
+                                      "No Shows","Offers","Follow Ups", "Closes",
+                                      "Cash", "Revenue"),
+                class= 'stripe compact nowrap',
+                options=list(
+  initComplete = JS(
+        "function(settings, json) {",
+        "$(this.api().table().container()).css({'font-size': '80%'});",
+        "}"))) 
+
+```
+
+### Sales Person 2 - Facebook Ads - 2023  
+
+```{css, echo=FALSE}
+.dataTables_scrollBody {
+    height:450px !important;
+    max-height:450px !important;
+}
+
+```
+
+```{r, fig.width=8, fig.height=8}
+rownames(sp2_fb_2023) <- NULL
+
+sp2_fb_2023 %>% 
+   mutate(cash = paste0("$", prettyNum(cash, big.mark=",", scientific=FALSE))) %>%
+  mutate(revenue = paste0("$", prettyNum(revenue, big.mark=",", scientific=FALSE))) %>%
+  DT::datatable(height = 2000, colnames = c("Date","Calls Booked","Calls Taken",
+                                      "No Shows","Offers","Follow Ups", "Closes",
+                                      "Cash", "Revenue"),
+                class= 'stripe compact nowrap',
+                options=list(
+  initComplete = JS(
+        "function(settings, json) {",
+        "$(this.api().table().container()).css({'font-size': '80%'});",
+        "}"))) 
+
+```
+
+
+# Website Calls {data-navmenu="Sales Person 2"}
+
+<center><b><font size="8">  Website Calls </font></b></center> 
+
+### Calls Booked 
+
+```{r, fig.width=16, fig.height=5, echo = FALSE, results=FALSE}
+
+sp2_web_2022 <- as.data.frame(
+  cbind(
+c(0),
+c(0),
+c(0),
+c(0),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "May 2022", range = "BQ44:BV44"))),1,2)),
+                substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "May 2022", range = "BW44:BX44"))),1,5)),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "June 2022", range = "BQ44:BV44"))),1,2)),
+                substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "June 2022", range = "BW44:BX44"))),1,5)),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "July 2022", range = "BQ44:BV44"))),1,5)),
+                substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "July 2022", range = "BW44:BX44"))),1,4)),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "August 2022", range = "BQ44:BV44"))),1,1)),
+  gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "August 2022", range = "BW44:BX44"))),1,1))),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "September 2022", range = "BQ44:BV44"))),1,2)),
+  gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "September 2022", range = "BW44:BX44"))),1,5))),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "October 2022", range = "BQ44:BV44"))),1,3)),
+  gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "October 2022", range = "BW44:BX44"))),1,5))),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "November 2022", range = "BQ44:BV44"))),1,3)),
+  gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "November 2022", range = "BW44:BX44"))),1,5))),
+c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "December 2022", range = "BQ44:BV44"))),1,3)),
+  gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "December 2022", range = "BW44:BX44"))),1,5)))
+))
+
+sp2_web_2022 <- sp2_web_2022 %>%
+  mutate_all(as.numeric)
+
+sp2_web_2022 <- as.data.frame(t(sp2_web_2022))
+
+sp2_web_2022 <- cbind(my(c("01-2022","02-2022","03-2022","04-2022",
+                           "05-2022","06-2022","07-2022","08-2022",
+                           "09-2022","10-2022","11-2022","12-2022")), sp2_web_2022)      
+
+colnames(sp2_web_2022) <- c("Date", "Calls Booked", "Calls Taken", "No Shows", "Offers", "Follow Ups", 
+                            "Closes", "Cash", "Revenue")
+sp2_web_2022 <-  sp2_web_2022 %>% clean_names()
+
+sp2_web_2022[is.na(sp2_web_2022)] <- 0 
+
+#--------------------------------------------------------------
+
+sp2_web_2023 <- as.data.frame(
+  cbind(
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "January 2023", 
+                                                       range = "BQ44:BV44"))),1,3)),
+                    substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "January 2023", 
+                                                       range ="BW44:BX44"))),1,5)),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "February 2023", 
+                                                       range = "BQ44:BV44"))),1,3)),
+                    substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "February 2023", 
+                                                       range = "BW44:BX44"))),1,5)),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "March 2023", range = "BQ44:BV44"))),1,3)),
+                    substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "March 2023", range = "BW44:BX44"))),1,5)),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "April 2023", range = "BL44:BQ44"))),1,3)),
+                    substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "April 2023", range = "BR44:BS44"))),1,5)),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "May 2023", range = "AT44:AY44"))),1,3)),
+      gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "May 2023", range = "AZ44:BA44"))),1,5))),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "June 2023", range = "AT44:AY44"))),1,3)),
+      gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "June 2023", range = "AZ44:BA44"))),1,5))),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "July 2023", range = "AT44:AY44"))),1,3)),
+      gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "July 2023", range = "AZ44:BA44"))),1,5))),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "August 2023", range = "AT44:AY44"))),1,3)),
+                    substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "August 2023", 
+                                                       range = "AZ44:BA44"))),1,5)),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "September 2023", 
+                                                       range = "AT44:AY44"))),1,3)),
+                    substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "September 2023", 
+                                                       range = "AZ44:BA44"))),1,5)),
+    c(gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "October 2023", 
+                                                       range = "AT44:AY44"))),1,3)),
+      gsub("\\.","",substr(as.list(colnames(read_excel("kpi.xlsx", sheet = "October 2023", range = "AZ44:BA44"))),1,5))
+  ),
+  c(0),
+  c(0)
+  ))
+
+
+sp2_web_2023 <- sp2_web_2023 %>%
+  mutate_all(as.numeric)
+
+sp2_web_2023 <- as.data.frame(t(sp2_web_2023))
+
+sp2_web_2023 <- cbind(my(c("01-2023","02-2023","03-2023","04-2023",
+                           "05-2023","06-2023","07-2023","08-2023",
+                           "09-2023","10-2023","11-2023","12-2023")), sp2_web_2023)      
+
+
+colnames(sp2_web_2023) <- c("Date", "Calls Booked", "Calls Taken", "No Shows", 
+                            "Offers", "Follow Ups", "Closes", "Cash", "Revenue")
+sp2_web_2023 <-  sp2_web_2023 %>% clean_names()
+
+sp2_web_2022[is.na(sp2_web_2022)] <- 0 
+
+da <- ggplot(sp2_web_2022, aes(x=date, y=calls_booked)) +
+  geom_bar(stat="identity", fill="#0A4D68") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Calls Booked", title="2022") +
+  geom_text(aes(label = round(calls_booked,0)), color = "white", size = 2.5, vjust=2) +
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,160)
+
+db <- ggplot(sp2_web_2023, aes(x=date, y=calls_booked)) +
+  geom_bar(stat="identity", fill="#0A4D68") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-31")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = round(calls_booked,0)), color = "white", size = 2.5, vjust=2) +
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,160)
+
+ grid.arrange(da , db, nrow=1)
+
+
+```
+
+### Calls Taken
+
+```{r, fig.width=16, fig.height=5}
+dc <- ggplot(sp2_web_2022, aes(x=date, y=calls_taken)) +
+  geom_bar(stat="identity", fill="#088395") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Calls Taken", title="2022") +
+  geom_text(aes(label = round(calls_taken,0)), color = "white", size = 2.5, vjust=2) +
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,150) 
+
+dd <- ggplot(sp2_web_2023, aes(x=date, y=calls_taken)) +
+  geom_bar(stat="identity", fill="#088395") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-31")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = round(calls_taken,0)), color = "white", size = 2.5, vjust=2) +
+  ylim(0,150) 
+
+ grid.arrange(dc , dd, nrow=1)
+```
+
+### No Shows
+
+```{r, fig.width=16, fig.height=5}
+
+de <- ggplot(sp2_web_2022, aes(x=date, y=no_shows)) +
+  geom_bar(stat="identity", fill="#05BFDB") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="No Shows", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(no_shows > 3,paste(round(no_shows,0)),paste(""))), color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,30) 
+
+df <- ggplot(sp2_web_2023, aes(x=date, y=no_shows)) +
+  geom_bar(stat="identity", fill="#05BFDB") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(no_shows > 3,paste(round(no_shows,0)),paste(""))), color = "black", size = 2.5, vjust=2) + 
+  ylim(0,30)    
+   
+ grid.arrange(de , df, nrow=1)
+```
+
+### Offers
+
+```{r, fig.width=16, fig.height=5}
+
+dg <- ggplot(sp2_web_2022, aes(x=date, y=offers)) +
+  geom_bar(stat="identity", fill="#6DD19C") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Offers", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(offers > 1,paste(round(offers,0)),paste(""))), color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,50) 
+
+dh <- ggplot(sp2_web_2023, aes(x=date, y=offers)) +
+  geom_bar(stat="identity", fill="#6DD19C") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(offers > 3,paste(round(offers,0)),paste(""))), color = "black", size = 2.5, vjust=2) + 
+  ylim(0,50)    
+   
+ grid.arrange(dg , dh, nrow=1)
+```
+
+
+### Follow Ups
+
+```{r, fig.width=16, fig.height=5}
+
+di <- ggplot(sp2_web_2022, aes(x=date, y=follow_ups)) +
+  geom_bar(stat="identity", fill="#87CBB9") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Follow Ups", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(follow_ups > 1,paste(round(follow_ups,0)),paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,20) 
+
+dj <- ggplot(sp2_web_2023, aes(x=date, y=follow_ups)) +
+  geom_bar(stat="identity", fill="#87CBB9") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(follow_ups > 1,paste(round(follow_ups,0)),paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  ylim(0,20)    
+   
+ grid.arrange(di , dj, nrow=1)
+```
+
+### Closes
+
+```{r, fig.width=16, fig.height=5}
+
+dk <- ggplot(sp2_web_2022, aes(x=date, y=closes)) +
+  geom_bar(stat="identity", fill="#B9EDDD") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Closes", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(closes > 1,paste(round(closes,0)),paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  ylim(0,50) 
+
+dl <- ggplot(sp2_web_2023, aes(x=date, y=closes)) +
+  geom_bar(stat="identity", fill="#B9EDDD") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(closes > 1,paste(round(closes,0)),paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  ylim(0,50)    
+   
+ grid.arrange(dk , dl, nrow=1)
+```
+
+### Cash
+
+```{r, fig.width=16, fig.height=5}
+
+dm <- ggplot(sp2_web_2022, aes(x=date, y=cash)) +
+  geom_bar(stat="identity", fill="#3EB489") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Cash", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+    geom_text(aes(label = if_else(cash > 1500,
+                                paste("$",
+                                      prettyNum(paste(round(cash,0)),
+                                      big.mark=",",scientific=FALSE)),
+                                paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  scale_y_continuous(labels=scales::dollar_format(), limits = c(0,100000))
+
+dn <- ggplot(sp2_web_2023, aes(x=date, y=cash)) +
+  geom_bar(stat="identity", fill="#3EB489") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(cash > 1500,
+                                paste("$",
+                                      prettyNum(paste(round(cash,0)),
+                                      big.mark=",",scientific=FALSE)),
+                                paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  scale_y_continuous(labels=scales::dollar_format(), limits = c(0,100000))  
+   
+ grid.arrange(dm, dn, nrow=1)
+```
+
+### Revenue
+
+```{r, fig.width=16, fig.height=5}
+
+do <- ggplot(sp2_web_2022, aes(x=date, y=revenue)) +
+  geom_bar(stat="identity", fill="#3EB489") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1))+
+  labs(x="", y="Revenue", title="2022") +
+  scale_x_date(breaks = breaks_pretty(12)) +
+    geom_text(aes(label = if_else(revenue > 1500,
+                                paste("$",
+                                      prettyNum(paste(round(revenue,0)),
+                                      big.mark=",",scientific=FALSE)),
+                                paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  theme(axis.title = element_text(size = 20)) +
+  scale_y_continuous(labels=scales::dollar_format(), limits = c(0,100000))
+
+dp <- ggplot(sp2_web_2023, aes(x=date, y=revenue)) +
+  geom_bar(stat="identity", fill="#3EB489") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=90,hjust=1), axis.title = element_text(size = 20))+
+  labs(x="", y="", title="2023") +
+  scale_x_date(limits = as.Date(c("2022-12-01", "2023-12-01")), breaks = breaks_pretty(12)) +
+  geom_text(aes(label = if_else(revenue > 1500,
+                                paste("$",
+                                      prettyNum(paste(round(revenue,0)),
+                                      big.mark=",",scientific=FALSE)),
+                                paste(""))), 
+  color = "black", size = 2.5, vjust=2) + 
+  scale_y_continuous(labels=scales::dollar_format(), limits = c(0,100000))  
+   
+ grid.arrange(do, dp, nrow=1)
+```
+
+### Sales Person 2 - Website Calls - 2022    
+
+```{css, echo=FALSE}
+.dataTables_scrollBody {
+    height:450px !important;
+    max-height:450px !important;
+}
+
+```
+
+```{r, fig.width=8, fig.height=8}
+rownames(sp2_web_2022) <- NULL
+
+sp2_web_2022 %>% 
+   mutate(cash = paste0("$", prettyNum(cash, big.mark=",", scientific=FALSE))) %>%
+  mutate(revenue = paste0("$", prettyNum(revenue, big.mark=",", scientific=FALSE))) %>%
+  DT::datatable(height = 2000, colnames = c("Date","Calls Booked","Calls Taken",
+                                      "No Shows","Follow Ups", "Closes",
+                                      "Cash", "Revenue"),
+                class= 'stripe compact nowrap',
+                options=list(
+  initComplete = JS(
+        "function(settings, json) {",
+        "$(this.api().table().container()).css({'font-size': '80%'});",
+        "}"))) 
+
+```
+
+### Sales Person 2 - Website Calls - 2023  
+
+```{css, echo=FALSE}
+.dataTables_scrollBody {
+    height:450px !important;
+    max-height:450px !important;
+}
+
+```
+
+```{r, fig.width=8, fig.height=8}
+rownames(sp2_web_2023) <- NULL
+
+sp2_web_2023 %>% 
+   mutate(cash = paste0("$", prettyNum(cash, big.mark=",", scientific=FALSE))) %>%
+  mutate(revenue = paste0("$", prettyNum(revenue, big.mark=",", scientific=FALSE))) %>%
+  DT::datatable(height = 2000, colnames = c("Date","Calls Booked","Calls Taken",
+                                      "No Shows","Offers","Follow Ups","Closes",
+                                      "Cash", "Revenue"),
+                class= 'stripe compact nowrap',
+                options=list(
+  initComplete = JS(
+        "function(settings, json) {",
+        "$(this.api().table().container()).css({'font-size': '80%'});",
+        "}"))) 
+
+```
+
+
+
+
